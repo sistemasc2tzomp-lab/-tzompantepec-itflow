@@ -1,0 +1,39 @@
+:root {
+    /* Paleta institucional — verde Tlaxcala + tierra + blanco cálido */
+    --verde: #1a5c3a;
+    --verde-med: #237a4d;
+    --verde-light: #2e9e64;
+    --verde-pale: #e8f5ee;
+    --tierra: #b5621e;
+    --tierra-pale: #fdf0e8;
+    --oro: #c8962a;
+    --oro-pale: #fdf6e3;
+
+    --bg: #f5f3ee;
+    --bg2: #ede9e1;
+    --surface: #ffffff;
+    --surface2: #faf8f4;
+    --surface3: #f0ede6;
+
+    --border: rgba(26,92,58,0.12);
+    --border2: rgba(26,92,58,0.22);
+
+    --text: #1c1a17;
+    --text2: #5a5548;
+    --text3: #9a9082;
+
+    --success: #1a5c3a;
+    --warn: #c8962a;
+    --danger: #c0392b;
+    --info: #1f618d;
+
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow: 0 4px 20px rgba(0,0,0,0.10);
+    --shadow-lg: 0 12px 48px rgba(0,0,0,0.14);
+}

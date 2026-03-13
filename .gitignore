@@ -1,0 +1,57 @@
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de entorno
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+
+# Build outputs
+dist/
+build/
+.vercel/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Configuración local
+config.local.js
+*.local.*
+
+# Backup de bases de datos
+*.sql.backup
+*.db.backup
+
+# Documentación de producción (mantener en local)
+README-PRODUCCION.md
+setup-users.js
+
+# Archivos sensibles
+*.key
+*.pem
+*.p12
