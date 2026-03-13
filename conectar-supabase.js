@@ -25,7 +25,13 @@ function autoConnectSupabase() {
     
     // Conectar a Supabase
     try {
-        window.supabaseClient = window.supabase.createClient(url, key);
+        // Extraer createClient de window.supabase
+        const { createClient } = window.supabase;
+        if (!createClient) {
+            throw new Error('Supabase no está cargado');
+        }
+        
+        window.supabaseClient = createClient(url, key);
         console.log('✅ Cliente de Supabase creado');
         
         // Actualizar UI
