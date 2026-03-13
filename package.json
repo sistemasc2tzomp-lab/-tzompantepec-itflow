@@ -1,0 +1,38 @@
+{
+  "name": "tzompantepec-itflow",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de tickets para el H. Ayuntamiento de Tzompantepec",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "dev": "python -m http.server 8080",
+    "build": "echo 'No build step needed for static site'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "itsm",
+    "ticketing",
+    "municipal",
+    "tzompantepec",
+    "supabase",
+    "javascript",
+    "html5",
+    "css3"
+  ],
+  "author": "H. Ayuntamiento de Tzompantepec - Dirección de TI",
+  "license": "MIT",
+  "homepage": "https://github.com/tzompantepec/itflow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tzompantepec/itflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tzompantepec/itflow/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^28.0.0"
+  }
+}
