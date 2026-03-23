@@ -1,94 +1,86 @@
 // ════════════════════════════════════════════════════════════════
-// INICIALIZACIÓN DE SUPABASE - CARGA SEGURA DE LIBRERÍA
+// INICIALIZACIÓN DE SUPABASE - CARGA DIRECTA DE LIBRERÍA
 // ════════════════════════════════════════════════════════════════
 
 (function() {
     'use strict';
-    
-    // Función para esperar a que Supabase esté disponible
-    function waitForSupabase(callback, maxAttempts = 50) {
-        let attempts = 0;
-        
-        function check() {
-            attempts++;
-            
-            if (window.supabase && window.supabase.createClient) {
-                console.log('✅ Supabase está disponible');
-                callback();
-            } else if (attempts < maxAttempts) {
-                console.log(`⏳ Esperando Supabase... intento ${attempts}/${maxAttempts}`);
-                setTimeout(check, 100);
-            } else {
-                console.error('❌ Supabase no se pudo cargar después de varios intentos');
-                // Intentar cargar manualmente
-                loadSupabaseManually(callback);
-            }
+
+    const SUPABASE_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+
+    /**
+     * Carga la librería de Supabase desde CDN e inicializa el cliente.
+     * Si ya está cargada en window.supabase, la usa directamente.
+     */
+    function loadAndInit() {
+        if (window.supabase && window.supabase.createClient) {
+            // Ya estaba cargada (ej. tag <script> en el HTML)
+            console.log('✅ Supabase ya disponible en window');
+            tryAutoConnect();
+            return;
         }
-        
-        check();
-    }
-    
-    // Cargar Supabase manualmente si no está disponible
-    function loadSupabaseManually(callback) {
-        console.log('🔧 Cargando Supabase manualmente...');
-        
+
+        // Cargar desde CDN
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-        script.async = true;
-        
+        script.src = SUPABASE_CDN;
+
         script.onload = function() {
-            console.log('✅ Librería Supabase cargada manualmente');
-            callback();
+            console.log('✅ Librería Supabase cargada');
+            tryAutoConnect();
         };
-        
+
         script.onerror = function() {
-            console.error('❌ Error cargando librería Supabase');
+            console.error('❌ No se pudo cargar la librería de Supabase desde CDN.');
         };
-        
+
         document.head.appendChild(script);
     }
-    
-    // Inicializar cuando el DOM esté listo
-    function initSupabase() {
-        waitForSupabase(function() {
-            // Conectar automáticamente si hay credenciales
-            const url = document.getElementById('supa-url')?.value;
-            const key = document.getElementById('supa-key')?.value;
-            
-            if (url && key) {
-                try {
-                    const { createClient } = window.supabase;
-                    window.supabaseClient = createClient(url, key);
-                    
-                    console.log('✅ Supabase conectado automáticamente');
-                    
-                    // Actualizar UI
-                    const bannerStatus = document.getElementById('banner-status');
-                    if (bannerStatus) {
-                        bannerStatus.textContent = '● CONECTADO';
-                        bannerStatus.className = 'banner-status connected';
-                    }
-                    
-                    // Ocultar banner después de 2 segundos
-                    setTimeout(() => {
-                        const configBanner = document.getElementById('config-banner');
-                        if (configBanner) {
-                            configBanner.style.display = 'none';
-                        }
-                    }, 2000);
-                    
-                } catch (error) {
-                    console.error('❌ Error conectando Supabase:', error);
-                }
+
+    /**
+     * Intenta conectar automáticamente usando las credenciales guardadas
+     * en localStorage (guardadas previamente por connectSupabase()).
+     */
+    function tryAutoConnect() {
+        const url = localStorage.getItem('supa_url');
+        const key = localStorage.getItem('supa_key');
+
+        if (!url || !key) {
+            console.log('ℹ️ Sin credenciales guardadas — esperando configuración manual.');
+            return;
+        }
+
+        try {
+            // Evitar instancias duplicadas
+            if (window.supabaseClient) {
+                console.log('ℹ️ Cliente Supabase ya existe, omitiendo creación duplicada.');
+                return;
             }
-        });
+
+            window.supabaseClient = window.supabase.createClient(url, key);
+            console.log('✅ Supabase conectado automáticamente');
+
+            // Actualizar UI del banner si existe
+            const bannerStatus = document.getElementById('banner-status');
+            if (bannerStatus) {
+                bannerStatus.textContent = '● SUPABASE CONECTADO';
+                bannerStatus.className = 'banner-status connected';
+            }
+
+            const syncDot = document.getElementById('sync-dot');
+            if (syncDot) syncDot.classList.remove('offline');
+
+            const syncLabel = document.getElementById('sync-label');
+            if (syncLabel) syncLabel.textContent = 'Supabase sync';
+
+        } catch (error) {
+            console.error('❌ Error al conectar Supabase automáticamente:', error);
+        }
     }
-    
-    // Iniciar cuando el documento esté listo
+
+    // Iniciar cuando el DOM esté listo
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSupabase);
+        document.addEventListener('DOMContentLoaded', loadAndInit);
     } else {
-        initSupabase();
+        loadAndInit();
     }
-    
+
 })();
