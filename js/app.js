@@ -224,17 +224,17 @@ window.onSearchChange = onSearchChange;
 window.onFilterChange = onFilterChange;
 window.setPage = setPage;
 
-// Funciones de exportación
-window.exportExcel = exportExcel;
-window.exportPDF = exportPDF;
-window.exportCriticos = exportCriticos;
-window.exportResueltos = exportResueltos;
+// Funciones de exportación — stubs seguros si no están definidas en reports.js
+window.exportExcel     = typeof exportExcel     !== 'undefined' ? exportExcel     : () => toast('Exportación no disponible.', 'error');
+window.exportPDF       = typeof exportPDF       !== 'undefined' ? exportPDF       : () => toast('Exportación no disponible.', 'error');
+window.exportCriticos  = typeof exportCriticos  !== 'undefined' ? exportCriticos  : () => toast('Exportación no disponible.', 'error');
+window.exportResueltos = typeof exportResueltos !== 'undefined' ? exportResueltos : () => toast('Exportación no disponible.', 'error');
 
-// Funciones de UI
-window.toggleMobileMenu = toggleMobileMenu;
-window.closeMobileMenu = closeMobileMenu;
+// Funciones de UI — stubs seguros
+window.toggleMobileMenu = typeof toggleMobileMenu !== 'undefined' ? toggleMobileMenu : () => {};
+window.closeMobileMenu  = typeof closeMobileMenu  !== 'undefined' ? closeMobileMenu  : () => {};
 
-// Funciones de configuración y utilidades
-window.showSQLGuide = showSQLGuide;
-window.copySQLGuide = copySQLGuide;
-window.connectSupabase = connectSupabase;
+// Funciones de configuración y utilidades — stubs seguros
+window.showSQLGuide    = typeof showSQLGuide    !== 'undefined' ? showSQLGuide    : () => {};
+window.copySQLGuide    = typeof copySQLGuide    !== 'undefined' ? copySQLGuide    : () => {};
+window.connectSupabase = typeof connectSupabase !== 'undefined' ? connectSupabase : () => {};
