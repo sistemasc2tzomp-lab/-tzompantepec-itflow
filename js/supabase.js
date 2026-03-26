@@ -139,9 +139,23 @@ async function loadFromSupabase() {
             .from('tickets')
             .select('*')
             .order('created_at', { ascending: false });
-            
+
         if (ticketsError) throw ticketsError;
-        gTickets = tickets || [];
+
+        // Normalizar campos para compatibilidad con código JS existente
+        gTickets = (tickets || []).map(t => ({
+            ...t,
+            status:        t.status       ? String(t.status)    : 'nuevo',
+            prioridad:     t.prioridad    ? String(t.prioridad) : 'media',
+            titulo:        t.titulo       || t.asunto           || '',
+            solicitante_id: t.solicitante_id || t.creado_por    || '',
+            asignado_id:   t.asignado_id  || t.asignado_a       || null,
+            created_at:    t.created_at   || t.creado_en        || new Date().toISOString(),
+            updated_at:    t.updated_at   || t.actualizado_en   || new Date().toISOString(),
+            imagen_url:    t.imagen_url   || null,
+            fotos_urls:    Array.isArray(t.fotos_urls) ? t.fotos_urls : [],
+            categoria:     t.categoria    || '',
+        }));
 
         // Cargar historial
         const { data: histories, error: histError } = await supabaseClient
