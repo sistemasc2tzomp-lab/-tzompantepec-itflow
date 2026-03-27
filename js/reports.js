@@ -1,380 +1,495 @@
 // ══════════════════════════════════════════
-// REPORTES DEL SISTEMA
+// REPORTES — Exportación real a Excel y PDF
+// Usa las librerías SheetJS (XLSX) y jsPDF
+// que ya están cargadas en index.html
 // ══════════════════════════════════════════
 
+// ─────────────────────────────────────────
+// RENDER VISTA REPORTES
+// ─────────────────────────────────────────
 async function renderReportes() {
-    if (!isAdmin()) {
-        toast('Acceso no autorizado', 'error');
-        navigate('dashboard');
+    const el = document.getElementById('view-reportes');
+    if (!el) return;
+
+    const tickets  = window.gTickets  || [];
+    const usuarios = window.gUsers    || [];
+    const hoy      = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+
+    // Calcular métricas
+    const total      = tickets.length;
+    const abiertos   = tickets.filter(t => !['cerrado','cancelado'].includes(t.status)).length;
+    const cerrados   = tickets.filter(t => t.status === 'cerrado').length;
+    const criticos   = tickets.filter(t => t.prioridad === 'crítica' && !['cerrado','cancelado'].includes(t.status)).length;
+    const sinAsignar = tickets.filter(t => !t.asignado_id).length;
+
+    // Tickets últimos 7 días
+    const hace7 = new Date(); hace7.setDate(hace7.getDate() - 7);
+    const ultimos7 = tickets.filter(t => new Date(t.created_at) >= hace7).length;
+
+    // Tasa de resolución
+    const tasa = total > 0 ? Math.round((cerrados / total) * 100) : 0;
+
+    // Por departamento
+    const porDepto = {};
+    tickets.forEach(t => {
+        const d = t.departamento || 'Sin depto.';
+        porDepto[d] = (porDepto[d] || 0) + 1;
+    });
+    const topDeptos = Object.entries(porDepto).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+    // Por técnico
+    const porTecnico = {};
+    tickets.forEach(t => {
+        if (!t.asignado_id) return;
+        const nombre = getUserName(t.asignado_id);
+        if (!porTecnico[nombre]) porTecnico[nombre] = { total:0, cerrados:0 };
+        porTecnico[nombre].total++;
+        if (t.status === 'cerrado') porTecnico[nombre].cerrados++;
+    });
+
+    el.innerHTML = `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+            <div>
+                <h2 style="font-size:1.1rem;font-weight:700;color:var(--text);margin:0">Reportes</h2>
+                <p style="font-size:.83rem;color:var(--text2);margin:3px 0 0">
+                    Repositorio de datos del sistema — ${hoy}
+                </p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" onclick="exportarExcel()">
+                    ↓ Exportar Excel
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportarPDF()">
+                    ↓ Exportar PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Métricas principales -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+            ${mCard('#1a5c38','#e8f5ee', total,    'Total tickets',     '',           iTicket('18'))}
+            ${mCard('#2563eb','#eff6ff', abiertos,  'Abiertos',          '',           iClock('18'))}
+            ${mCard('#16a34a','#f0fdf4', cerrados,  'Cerrados',          '',           iCheck('18'))}
+            ${mCard('#d97706','#fefce8', tasa+'%',  'Tasa resolución',   '',           iChart('18'))}
+            ${mCard('#dc2626','#fef2f2', criticos,  'Críticos activos',  '',           iAlert('18'))}
+            ${mCard('#7c3aed','#f5f3ff', sinAsignar,'Sin asignar',       '',           iUser('18'))}
+            ${mCard('#0891b2','#ecfeff', ultimos7,  'Últimos 7 días',    '',           iClock('18'))}
+            ${mCard('#059669','#ecfdf5', usuarios.length,'Usuarios',     '',           iUsers('18'))}
+        </div>
+
+        <!-- Distribución por estado y prioridad -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="panel">
+                <div class="panel-body">
+                    <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                        Distribución por estado
+                    </div>
+                    ${renderBarrasEstado(tickets)}
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-body">
+                    <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                        Tickets por prioridad
+                    </div>
+                    ${renderBarrasPrioridad(tickets)}
+                </div>
+            </div>
+        </div>
+
+        <!-- Por departamento -->
+        <div class="panel" style="margin-bottom:14px">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Tickets por departamento
+                </div>
+                ${topDeptos.length ? renderBarrasDepto(topDeptos, total) : '<p style="font-size:.82rem;color:var(--text3)">Sin tickets registrados.</p>'}
+            </div>
+        </div>
+
+        <!-- Rendimiento por técnico -->
+        <div class="panel" style="margin-bottom:14px">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Rendimiento por técnico
+                </div>
+                ${renderTablaTecnicos(porTecnico)}
+            </div>
+        </div>
+
+        <!-- Directorio de usuarios -->
+        <div class="panel">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Directorio de usuarios (${usuarios.length})
+                </div>
+                ${renderTablaUsuarios(usuarios, tickets)}
+            </div>
+        </div>`;
+}
+
+// ─────────────────────────────────────────
+// GRÁFICAS EN HTML/CSS
+// ─────────────────────────────────────────
+function renderBarrasEstado(tickets) {
+    const total = tickets.length || 1;
+    return Object.entries(STATUS_META).map(([k, v]) => {
+        const n    = tickets.filter(t => t.status === k).length;
+        const pct  = Math.round((n / total) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${v.label}</span>
+                <span style="font-weight:600">${n} <span style="color:var(--text3);font-weight:400">(${pct}%)</span></span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${v.color};border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderBarrasPrioridad(tickets) {
+    const total = tickets.length || 1;
+    return Object.entries(PRIO_META).map(([k, v]) => {
+        const n   = tickets.filter(t => t.prioridad === k).length;
+        const pct = Math.round((n / total) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${v.label}</span>
+                <span style="font-weight:600">${n} <span style="color:var(--text3);font-weight:400">(${pct}%)</span></span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${v.color};border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderBarrasDepto(topDeptos, total) {
+    const max = topDeptos[0]?.[1] || 1;
+    return topDeptos.map(([nombre, n]) => {
+        const pct = Math.round((n / max) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${nombre}</span>
+                <span style="font-weight:600">${n}</span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:var(--verde,#1a5c38);border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderTablaTecnicos(porTecnico) {
+    const entries = Object.entries(porTecnico);
+    if (!entries.length) return `<p style="font-size:.82rem;color:var(--text3)">Sin técnicos registrados.</p>`;
+    return `
+        <div class="table-wrap">
+            <table class="tickets-table">
+                <thead><tr>
+                    <th>Técnico</th><th>Total</th><th>Resueltos</th><th>En curso</th><th>% Resolución</th>
+                </tr></thead>
+                <tbody>
+                    ${entries.sort((a,b) => b[1].total - a[1].total).map(([nombre, d]) => {
+                        const pct = d.total > 0 ? Math.round((d.cerrados / d.total) * 100) : 0;
+                        return `<tr>
+                            <td style="font-weight:600">${nombre}</td>
+                            <td>${d.total}</td>
+                            <td style="color:#16a34a;font-weight:600">${d.cerrados}</td>
+                            <td style="color:#d97706">${d.total - d.cerrados}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px">
+                                        <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:3px"></div>
+                                    </div>
+                                    <span style="font-size:.75rem;min-width:28px">${pct}%</span>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function renderTablaUsuarios(usuarios, tickets) {
+    if (!usuarios.length) return `<p style="font-size:.82rem;color:var(--text3)">Sin usuarios.</p>`;
+    return `
+        <div class="table-wrap">
+            <table class="tickets-table">
+                <thead><tr>
+                    <th>Usuario</th><th>Correo</th><th>Rol</th><th>Departamento</th>
+                    <th>Tickets solicitados</th><th>Tickets asignados</th>
+                </tr></thead>
+                <tbody>
+                    ${usuarios.map(u => {
+                        const solicitados = tickets.filter(t => t.solicitante_id === u.id).length;
+                        const asignados   = tickets.filter(t => t.asignado_id    === u.id).length;
+                        return `<tr>
+                            <td style="font-weight:600">${u.nombre}</td>
+                            <td style="font-size:.8rem;color:var(--text2)">${u.email}</td>
+                            <td><span class="badge badge-${u.rol === 'admin' ? 'atendido' : 'nuevo'}">${u.rol}</span></td>
+                            <td style="font-size:.8rem">${u.departamento || '—'}</td>
+                            <td style="text-align:center">${solicitados}</td>
+                            <td style="text-align:center">${asignados}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+// ─────────────────────────────────────────
+// ÍCONOS AUXILIARES (si no existen en utils)
+// ─────────────────────────────────────────
+function iCheck(s='16') {
+    return `<svg width="${s}" height="${s}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+}
+function iChart(s='16') {
+    return `<svg width="${s}" height="${s}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`;
+}
+
+// ─────────────────────────────────────────
+// EXPORTAR A EXCEL (SheetJS / XLSX)
+// ─────────────────────────────────────────
+function exportarExcel() {
+    if (typeof XLSX === 'undefined') {
+        toast('Librería XLSX no disponible. Verifica que esté cargada en index.html.', 'error');
         return;
     }
 
-    const el = document.getElementById('view-reportes');
-    showLoading(true);
-    await loadFromSupabase();
-    showLoading(false);
-
     const tickets  = window.gTickets  || [];
-    const users    = window.gUsers    || [];
-    const histories= window.gHistories|| [];
-
-    // ── Métricas globales ──────────────────
-    const total     = tickets.length;
-    const abiertos  = tickets.filter(t => !['cerrado','cancelado'].includes(t.status)).length;
-    const cerrados  = tickets.filter(t => t.status === 'cerrado').length;
-    const cancelados= tickets.filter(t => t.status === 'cancelado').length;
-    const criticos  = tickets.filter(t => t.prioridad === 'crítica' && !['cerrado','cancelado'].includes(t.status)).length;
-    const sinAsignar= tickets.filter(t => !t.asignado_id && !['cerrado','cancelado'].includes(t.status)).length;
-    const tasaRes   = total > 0 ? Math.round((cerrados/total)*100) : 0;
-
-    // ── Tickets por estado ─────────────────
-    const porEstado = Object.entries(STATUS_META).map(([k,v]) => ({
-        label: v.label, count: tickets.filter(t => t.status === k).length, color: v.color || v.dot
-    })).filter(x => x.count > 0);
-
-    // ── Tickets por prioridad ──────────────
-    const porPrio = Object.entries(PRIO_META).map(([k,v]) => ({
-        label: v.label, count: tickets.filter(t => t.prioridad === k).length
-    })).filter(x => x.count > 0);
-
-    // ── Tickets por departamento ───────────
-    const porDepto = (typeof DEPARTAMENTOS !== 'undefined' ? DEPARTAMENTOS : []).map(dep => ({
-        dep,
-        total:    tickets.filter(t => t.departamento === dep).length,
-        activos:  tickets.filter(t => t.departamento === dep && !['cerrado','cancelado'].includes(t.status)).length,
-        cerrados: tickets.filter(t => t.departamento === dep && t.status === 'cerrado').length
-    })).filter(x => x.total > 0).sort((a,b) => b.total - a.total);
-
-    // ── Tickets por técnico ────────────────
-    const tecnicos = users.filter(u => u.rol === 'admin');
-    const porTecnico = tecnicos.map(u => ({
-        nombre:    u.nombre,
-        email:     u.email,
-        asignados: tickets.filter(t => t.asignado_id === u.id).length,
-        activos:   tickets.filter(t => t.asignado_id === u.id && !['cerrado','cancelado'].includes(t.status)).length,
-        cerrados:  tickets.filter(t => t.asignado_id === u.id && t.status === 'cerrado').length
-    })).sort((a,b) => b.asignados - a.asignados);
-
-    // ── Actividad reciente (7 días) ────────
-    const hace7 = new Date(); hace7.setDate(hace7.getDate()-7);
-    const recientes = tickets.filter(t => new Date(t.created_at) > hace7).length;
-
-    el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px">
-        <div>
-            <h2 style="font-family:var(--font-display);font-size:1.4rem;color:var(--verde);margin:0">Reportes</h2>
-            <p class="section-sub" style="margin-top:2px">Repositorio de datos del sistema — ${new Date().toLocaleDateString('es-MX',{dateStyle:'long'})}</p>
-        </div>
-        <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-outline-verde" onclick="exportReportExcel()">
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Exportar Excel
-            </button>
-            <button class="btn btn-sm btn-outline-verde" onclick="exportReportPDF()">
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                Exportar PDF
-            </button>
-        </div>
-    </div>
-
-    <!-- KPIs principales -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px">
-        ${[
-            { label:'Total tickets',    val: total,     color:'var(--verde)',     icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2' },
-            { label:'Abiertos',         val: abiertos,  color:'var(--tierra)',    icon:'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label:'Cerrados',         val: cerrados,  color:'#16a34a',          icon:'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label:'Tasa resolución',  val: tasaRes+'%', color:'var(--verde-med)', icon:'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
-            { label:'Críticos activos', val: criticos,  color:'#e11d48',          icon:'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-            { label:'Sin asignar',      val: sinAsignar,color:'#d97706',          icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-            { label:'Últimos 7 días',   val: recientes, color:'var(--verde)',      icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-            { label:'Usuarios',         val: users.length, color:'var(--verde-med)', icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' }
-        ].map(k => `
-            <div class="panel" style="text-align:center;padding:14px 8px">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="${k.color}" stroke-width="2" style="margin-bottom:6px">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="${k.icon}"/>
-                </svg>
-                <div style="font-family:var(--font-display);font-size:1.6rem;color:${k.color};line-height:1">${k.val}</div>
-                <div style="font-size:.7rem;color:var(--text3);margin-top:3px">${k.label}</div>
-            </div>`).join('')}
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
-
-        <!-- Por estado -->
-        <div class="panel">
-            <div class="panel-header"><div class="panel-title">Distribución por estado</div></div>
-            <div class="panel-body">
-                ${porEstado.map(s => `
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-                    <div style="flex:1">
-                        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
-                            <span style="color:var(--text2)">${s.label}</span>
-                            <span style="font-weight:600;color:var(--text)">${s.count}</span>
-                        </div>
-                        <div style="background:var(--surface2);border-radius:4px;height:6px">
-                            <div style="background:${s.color};height:100%;width:${total>0?Math.round((s.count/total)*100):0}%;border-radius:4px;transition:width .4s"></div>
-                        </div>
-                    </div>
-                    <span style="font-size:.72rem;color:var(--text3);width:30px;text-align:right">${total>0?Math.round((s.count/total)*100):0}%</span>
-                </div>`).join('')}
-            </div>
-        </div>
-
-        <!-- Por prioridad -->
-        <div class="panel">
-            <div class="panel-header"><div class="panel-title">Distribución por prioridad</div></div>
-            <div class="panel-body">
-                ${porPrio.map(p => `
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-                    <div style="flex:1">
-                        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
-                            <span style="color:var(--text2)">${p.label}</span>
-                            <span style="font-weight:600">${p.count}</span>
-                        </div>
-                        <div style="background:var(--surface2);border-radius:4px;height:6px">
-                            <div style="background:var(--verde);height:100%;width:${total>0?Math.round((p.count/total)*100):0}%;border-radius:4px;transition:width .4s"></div>
-                        </div>
-                    </div>
-                    <span style="font-size:.72rem;color:var(--text3);width:30px;text-align:right">${total>0?Math.round((p.count/total)*100):0}%</span>
-                </div>`).join('')}
-                ${porPrio.length===0 ? '<p style="color:var(--text3);font-size:.83rem">Sin datos.</p>' : ''}
-            </div>
-        </div>
-    </div>
-
-    <!-- Por departamento -->
-    <div class="panel" style="margin-bottom:16px">
-        <div class="panel-header"><div class="panel-title">Tickets por departamento</div></div>
-        <div class="panel-body">
-            ${porDepto.length === 0 ? '<p style="color:var(--text3);font-size:.83rem">Sin tickets registrados.</p>' : `
-            <div class="table-wrap">
-                <table class="tickets-table" style="font-size:.82rem">
-                    <thead><tr>
-                        <th>Departamento</th>
-                        <th style="text-align:center">Total</th>
-                        <th style="text-align:center">Activos</th>
-                        <th style="text-align:center">Cerrados</th>
-                        <th>Resolución</th>
-                    </tr></thead>
-                    <tbody>
-                        ${porDepto.map(d => {
-                            const pct = d.total > 0 ? Math.round((d.cerrados/d.total)*100) : 0;
-                            return `<tr>
-                                <td style="font-weight:500">${d.dep}</td>
-                                <td style="text-align:center">${d.total}</td>
-                                <td style="text-align:center;color:var(--tierra)">${d.activos}</td>
-                                <td style="text-align:center;color:#16a34a">${d.cerrados}</td>
-                                <td>
-                                    <div style="display:flex;align-items:center;gap:7px">
-                                        <div style="flex:1;background:var(--surface2);border-radius:4px;height:6px">
-                                            <div style="background:var(--verde);height:100%;width:${pct}%;border-radius:4px"></div>
-                                        </div>
-                                        <span style="font-size:.72rem;color:var(--text3);width:30px">${pct}%</span>
-                                    </div>
-                                </td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>`}
-        </div>
-    </div>
-
-    <!-- Por técnico -->
-    <div class="panel" style="margin-bottom:16px">
-        <div class="panel-header"><div class="panel-title">Rendimiento por técnico</div></div>
-        <div class="panel-body">
-            ${porTecnico.length === 0 ? '<p style="color:var(--text3);font-size:.83rem">Sin técnicos registrados.</p>' : `
-            <div class="table-wrap">
-                <table class="tickets-table" style="font-size:.82rem">
-                    <thead><tr>
-                        <th>Técnico</th>
-                        <th>Correo</th>
-                        <th style="text-align:center">Asignados</th>
-                        <th style="text-align:center">Activos</th>
-                        <th style="text-align:center">Cerrados</th>
-                        <th>Eficiencia</th>
-                    </tr></thead>
-                    <tbody>
-                        ${porTecnico.map(t => {
-                            const pct = t.asignados > 0 ? Math.round((t.cerrados/t.asignados)*100) : 0;
-                            const ini = t.nombre.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-                            return `<tr>
-                                <td>
-                                    <div style="display:flex;align-items:center;gap:7px">
-                                        <div class="kcard-ava" style="width:26px;height:26px;font-size:.62rem">${ini}</div>
-                                        <span style="font-weight:500">${t.nombre}</span>
-                                    </div>
-                                </td>
-                                <td style="color:var(--text3);font-size:.77rem">${t.email}</td>
-                                <td style="text-align:center">${t.asignados}</td>
-                                <td style="text-align:center;color:var(--tierra)">${t.activos}</td>
-                                <td style="text-align:center;color:#16a34a">${t.cerrados}</td>
-                                <td>
-                                    <div style="display:flex;align-items:center;gap:7px">
-                                        <div style="flex:1;background:var(--surface2);border-radius:4px;height:6px">
-                                            <div style="background:var(--verde);height:100%;width:${pct}%;border-radius:4px"></div>
-                                        </div>
-                                        <span style="font-size:.72rem;color:var(--text3);width:30px">${pct}%</span>
-                                    </div>
-                                </td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>`}
-        </div>
-    </div>
-
-    <!-- Todos los usuarios -->
-    <div class="panel" style="margin-bottom:16px">
-        <div class="panel-header"><div class="panel-title">Directorio de usuarios (${users.length})</div></div>
-        <div class="panel-body">
-            <div class="table-wrap">
-                <table class="tickets-table" style="font-size:.82rem">
-                    <thead><tr>
-                        <th>Usuario</th><th>Correo</th><th>Rol</th><th>Departamento</th>
-                        <th style="text-align:center">Tickets solicitados</th>
-                        <th style="text-align:center">Tickets asignados</th>
-                    </tr></thead>
-                    <tbody>
-                        ${users.map(u => {
-                            const sol = tickets.filter(t => t.solicitante_id === u.id).length;
-                            const asig= tickets.filter(t => t.asignado_id === u.id).length;
-                            const ini = u.nombre.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-                            const isAdm = u.rol === 'admin';
-                            return `<tr>
-                                <td>
-                                    <div style="display:flex;align-items:center;gap:7px">
-                                        <div class="kcard-ava" style="width:26px;height:26px;font-size:.62rem;background:${isAdm?'var(--verde)':'var(--tierra)'}">${ini}</div>
-                                        <span style="font-weight:500">${u.nombre}</span>
-                                    </div>
-                                </td>
-                                <td style="color:var(--text3);font-size:.77rem">${u.email}</td>
-                                <td><span class="badge badge-${isAdm?'admin':'usuario'}-role">${isAdm?'Admin TI':'Usuario'}</span></td>
-                                <td style="color:var(--text2)">${u.departamento||'—'}</td>
-                                <td style="text-align:center">${sol}</td>
-                                <td style="text-align:center">${asig}</td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>`;
-}
-
-// ── Exportar Excel ───────────────────────
-async function exportReportExcel() {
-    if (typeof XLSX === 'undefined') { toast('XLSX no disponible', 'error'); return; }
-    const tickets  = window.gTickets  || [];
-    const users    = window.gUsers    || [];
-    const wb = XLSX.utils.book_new();
+    const usuarios = window.gUsers    || [];
 
     // Hoja 1: Tickets
-    const ticketData = [
-        ['ID','Título','Estado','Prioridad','Categoría','Departamento','Solicitante','Técnico asignado','Tiene imagen','Fecha creación','Última actualización'],
-        ...tickets.map(t => [
-            t.id, t.titulo,
-            STATUS_META[t.status]?.label||t.status,
-            PRIO_META[t.prioridad]?.label||t.prioridad,
-            t.categoria||'—', t.departamento||'—',
-            getUserName(t.solicitante_id),
-            t.asignado_id ? getUserName(t.asignado_id) : '—',
-            t.imagen_url ? 'Sí' : 'No',
-            new Date(t.created_at).toLocaleString('es-MX'),
-            new Date(t.updated_at).toLocaleString('es-MX')
-        ])
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ticketData), 'Tickets');
+    const ticketsData = tickets.map(t => ({
+        'ID':           t.id,
+        'Título':       t.titulo       || t.asunto || '',
+        'Estado':       STATUS_META[t.status]?.label   || t.status   || '',
+        'Prioridad':    PRIO_META[t.prioridad]?.label  || t.prioridad || '',
+        'Departamento': t.departamento || '',
+        'Categoría':    t.categoria    || '',
+        'Solicitante':  getUserName(t.solicitante_id),
+        'Técnico':      t.asignado_id ? getUserName(t.asignado_id) : 'Sin asignar',
+        'Descripción':  t.descripcion  || '',
+        'Fotos':        (t.imagen_url ? 1 : 0) + (Array.isArray(t.fotos_urls) ? t.fotos_urls.length : 0),
+        'Creado':       t.created_at   ? new Date(t.created_at).toLocaleString('es-MX')  : '',
+        'Actualizado':  t.updated_at   ? new Date(t.updated_at).toLocaleString('es-MX')  : '',
+        'Cerrado':      t.cerrado_en   ? new Date(t.cerrado_en).toLocaleString('es-MX')  : '',
+    }));
 
     // Hoja 2: Usuarios
-    const userData = [
-        ['Nombre','Correo','Rol','Departamento','Tickets solicitados','Tickets asignados'],
-        ...users.map(u => [
-            u.nombre, u.email,
-            u.rol === 'admin' ? 'Administrador TI' : 'Usuario',
-            u.departamento||'—',
-            tickets.filter(t => t.solicitante_id === u.id).length,
-            tickets.filter(t => t.asignado_id === u.id).length
-        ])
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(userData), 'Usuarios');
+    const usuariosData = usuarios.map(u => ({
+        'Nombre':       u.nombre       || '',
+        'Correo':       u.email        || '',
+        'Rol':          u.rol          || '',
+        'Departamento': u.departamento || '',
+        'Registrado':   u.created_at   ? new Date(u.created_at).toLocaleString('es-MX') : '',
+        'Tickets solicitados': tickets.filter(t => t.solicitante_id === u.id).length,
+        'Tickets asignados':   tickets.filter(t => t.asignado_id    === u.id).length,
+    }));
 
-    // Hoja 3: Por departamento
-    const deptData = [
-        ['Departamento','Total tickets','Activos','Cerrados','% Resolución'],
-        ...(typeof DEPARTAMENTOS !== 'undefined' ? DEPARTAMENTOS : []).map(dep => {
-            const dt = tickets.filter(t => t.departamento === dep);
-            const cer= dt.filter(t => t.status === 'cerrado').length;
-            return [dep, dt.length, dt.filter(t=>!['cerrado','cancelado'].includes(t.status)).length, cer, dt.length>0?Math.round((cer/dt.length)*100)+'%':'0%'];
-        })
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(deptData), 'Departamentos');
+    // Hoja 3: Resumen por departamento
+    const porDepto = {};
+    tickets.forEach(t => {
+        const d = t.departamento || 'Sin depto.';
+        if (!porDepto[d]) porDepto[d] = { total:0, abiertos:0, cerrados:0, criticos:0 };
+        porDepto[d].total++;
+        if (!['cerrado','cancelado'].includes(t.status)) porDepto[d].abiertos++;
+        if (t.status === 'cerrado') porDepto[d].cerrados++;
+        if (t.prioridad === 'crítica') porDepto[d].criticos++;
+    });
+    const deptoData = Object.entries(porDepto).map(([nombre, d]) => ({
+        'Departamento': nombre,
+        'Total':        d.total,
+        'Abiertos':     d.abiertos,
+        'Cerrados':     d.cerrados,
+        'Críticos':     d.criticos,
+        '% Resolución': d.total > 0 ? Math.round((d.cerrados / d.total) * 100) + '%' : '0%',
+    }));
 
+    // Crear libro
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ticketsData),  'Tickets');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usuariosData), 'Usuarios');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(deptoData),    'Por departamento');
+
+    // Descargar
     const fecha = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, `reporte_itsm_${fecha}.xlsx`);
-    toast('Reporte Excel generado.', 'success');
+    XLSX.writeFile(wb, `mesa-servicios-TI_${fecha}.xlsx`);
+    toast('Excel exportado correctamente.', 'success');
 }
 
-// ── Exportar PDF ─────────────────────────
-async function exportReportPDF() {
-    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') { toast('jsPDF no disponible', 'error'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const tickets = window.gTickets || [];
-    const users   = window.gUsers   || [];
-    const fecha   = new Date().toLocaleDateString('es-MX', { dateStyle: 'long' });
+// ─────────────────────────────────────────
+// EXPORTAR A PDF (jsPDF)
+// ─────────────────────────────────────────
+function exportarPDF() {
+    if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+        toast('Librería jsPDF no disponible. Verifica que esté cargada en index.html.', 'error');
+        return;
+    }
 
-    doc.setFontSize(18); doc.setTextColor(22, 101, 52);
-    doc.text('Mesa de Servicios TI', 14, 20);
-    doc.setFontSize(10); doc.setTextColor(100);
-    doc.text(`H. Ayuntamiento de Tzompantepec, Tlaxcala`, 14, 27);
-    doc.text(`Reporte generado: ${fecha}`, 14, 33);
+    const { jsPDF: PDF } = window.jspdf || window;
+    const doc  = new PDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const tickets  = window.gTickets || [];
+    const hoy  = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
 
-    let y = 42;
-    const line = () => { doc.setDrawColor(220); doc.line(14, y, 196, y); y += 4; };
+    // ── Portada ──────────────────────────────
+    doc.setFillColor(26, 92, 56);
+    doc.rect(0, 0, 297, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mesa de Servicios TI', 14, 16);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('H. Ayuntamiento de Tzompantepec — Reporte generado el ' + hoy, 14, 25);
+    doc.setFontSize(9);
+    doc.text(`Total de tickets: ${tickets.length}`, 14, 33);
 
-    const section = (title) => {
-        if (y > 260) { doc.addPage(); y = 20; }
-        doc.setFontSize(12); doc.setTextColor(22,101,52);
-        doc.text(title, 14, y); y += 3; line();
-        doc.setFontSize(9); doc.setTextColor(50);
-    };
+    let y = 50;
 
-    // Resumen
-    section('Resumen General');
-    const cerrados = tickets.filter(t => t.status === 'cerrado').length;
-    const tasaRes  = tickets.length > 0 ? Math.round((cerrados/tickets.length)*100) : 0;
-    [
-        `Total de tickets: ${tickets.length}`,
-        `Abiertos: ${tickets.filter(t=>!['cerrado','cancelado'].includes(t.status)).length}`,
-        `Cerrados: ${cerrados}`,
-        `Tasa de resolución: ${tasaRes}%`,
-        `Críticos activos: ${tickets.filter(t=>t.prioridad==='crítica'&&!['cerrado','cancelado'].includes(t.status)).length}`,
-        `Total de usuarios: ${users.length}`
-    ].forEach(text => { doc.text(text, 14, y); y += 6; });
-    y += 4;
+    // ── Resumen estadístico ──────────────────
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen estadístico', 14, y);
+    y += 7;
 
-    // Tickets recientes
-    section('Últimos 10 Tickets');
-    tickets.slice(0,10).forEach(t => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        const line1 = `${t.id} — ${t.titulo.substring(0,50)}${t.titulo.length>50?'...':''}`;
-        const line2 = `  Estado: ${STATUS_META[t.status]?.label||t.status}  |  Prioridad: ${PRIO_META[t.prioridad]?.label||t.prioridad}  |  ${t.departamento||'—'}`;
-        doc.text(line1, 14, y); y += 5;
-        doc.setTextColor(120); doc.text(line2, 14, y); doc.setTextColor(50); y += 7;
+    const abiertos  = tickets.filter(t => !['cerrado','cancelado'].includes(t.status)).length;
+    const cerrados  = tickets.filter(t => t.status === 'cerrado').length;
+    const criticos  = tickets.filter(t => t.prioridad === 'crítica').length;
+    const tasa      = tickets.length > 0 ? Math.round((cerrados / tickets.length) * 100) : 0;
+
+    const stats = [
+        ['Total tickets', tickets.length],
+        ['Abiertos',      abiertos],
+        ['Cerrados',      cerrados],
+        ['Críticos',      criticos],
+        ['Tasa resolución', tasa + '%'],
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    stats.forEach(([label, val], i) => {
+        const x = 14 + (i * 55);
+        doc.setFillColor(232, 245, 238);
+        doc.roundedRect(x, y, 50, 16, 2, 2, 'F');
+        doc.setTextColor(26, 92, 56);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(val), x + 25, y + 9, { align: 'center' });
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(label, x + 25, y + 14, { align: 'center' });
     });
+    y += 24;
 
-    // Usuarios
-    section('Directorio de Usuarios');
-    users.forEach(u => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(`${u.nombre} (${u.rol==='admin'?'Admin TI':'Usuario'}) — ${u.email} — ${u.departamento||'—'}`, 14, y);
+    // ── Tabla de tickets ─────────────────────
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Listado de tickets', 14, y);
+    y += 6;
+
+    // Cabecera tabla
+    const cols   = [25, 80, 28, 28, 40, 40, 28];
+    const headers= ['ID', 'Título', 'Estado', 'Prioridad', 'Departamento', 'Técnico', 'Fecha'];
+    doc.setFillColor(26, 92, 56);
+    doc.rect(14, y, 269, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    let x = 14;
+    headers.forEach((h, i) => { doc.text(h, x + 2, y + 5); x += cols[i]; });
+    y += 7;
+
+    // Filas
+    doc.setFont('helvetica', 'normal');
+    tickets.slice(0, 40).forEach((t, idx) => {
+        if (y > 185) {
+            doc.addPage();
+            y = 20;
+        }
+        const bg = idx % 2 === 0 ? [248, 248, 248] : [255, 255, 255];
+        doc.setFillColor(...bg);
+        doc.rect(14, y, 269, 6, 'F');
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(7.5);
+
+        const row = [
+            (t.id || '').substring(0, 12),
+            (t.titulo || t.asunto || '').substring(0, 38),
+            STATUS_META[t.status]?.label   || t.status   || '',
+            PRIO_META[t.prioridad]?.label  || t.prioridad || '',
+            (t.departamento || '').substring(0, 20),
+            t.asignado_id ? getUserName(t.asignado_id).split(' ')[0] : 'Sin asignar',
+            t.created_at ? new Date(t.created_at).toLocaleDateString('es-MX') : '',
+        ];
+
+        x = 14;
+        row.forEach((val, i) => {
+            doc.text(String(val), x + 2, y + 4.5);
+            x += cols[i];
+        });
         y += 6;
     });
 
-    const fechaFile = new Date().toISOString().slice(0,10);
-    doc.save(`reporte_itsm_${fechaFile}.pdf`);
-    toast('Reporte PDF generado.', 'success');
+    if (tickets.length > 40) {
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`... y ${tickets.length - 40} tickets más. Exporta Excel para ver el listado completo.`, 14, y + 5);
+    }
+
+    // ── Pie de página en todas las páginas ───
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+            `Mesa de Servicios TI — H. Ayuntamiento de Tzompantepec — Página ${i} de ${totalPages}`,
+            148.5, 205, { align: 'center' }
+        );
+    }
+
+    // Descargar
+    const fecha = new Date().toISOString().slice(0, 10);
+    doc.save(`reporte-tickets_${fecha}.pdf`);
+    toast('PDF exportado correctamente.', 'success');
 }
+
+// ─────────────────────────────────────────
+// ALIASES para compatibilidad con app.js
+// ─────────────────────────────────────────
+function exportExcel()    { exportarExcel(); }
+function exportPDF()      { exportarPDF();   }
+function exportCriticos() {
+    // Filtrar solo críticos y exportar Excel
+    const backup = window.gTickets;
+    window.gTickets = (backup || []).filter(t =>
+        t.prioridad === 'crítica' && !['cerrado','cancelado'].includes(t.status));
+    exportarExcel();
+    window.gTickets = backup;
+}
+function exportResueltos() {
+    // Filtrar solo resueltos/cerrados y exportar
+    const backup = window.gTickets;
+    window.gTickets = (backup || []).filter(t => t.status === 'cerrado');
+    exportarExcel();
+    window.gTickets = backup;
+}
+
+// Exponer globalmente
+window.renderReportes  = renderReportes;
+window.exportarExcel   = exportarExcel;
+window.exportarPDF     = exportarPDF;
+window.exportExcel     = exportExcel;
+window.exportPDF       = exportPDF;
+window.exportCriticos  = exportCriticos;
+window.exportResueltos = exportResueltos;
