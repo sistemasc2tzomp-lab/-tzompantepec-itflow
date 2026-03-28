@@ -7,6 +7,14 @@ window.currentView = 'dashboard';
 window.currentAssignTicketId = null;
 window.dashCharts = {};
 
+// Dev Mode: Ctrl+Shift+S para mostrar el banner de configuración de Supabase
+window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+        const banner = document.getElementById('config-banner');
+        if (banner) banner.classList.toggle('visible');
+    }
+});
+
 // Estos objetos se mantienen porque son configuraciones, no datos
 const STATUS_META = {
     nuevo: { label: 'Nuevo', color: '#4f46e5', dot: '#6366f1' },
