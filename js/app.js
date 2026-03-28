@@ -15,37 +15,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Estos objetos se mantienen porque son configuraciones, no datos
-const STATUS_META = {
-    nuevo: { label: 'Nuevo', color: '#4f46e5', dot: '#6366f1' },
-    en_asignacion: { label: 'En asignación', color: '#d97706', dot: '#f59e0b' },
-    en_progreso: { label: 'En progreso', color: '#059669', dot: '#10b981' },
-    pendiente: { label: 'Pendiente', color: '#e11d48', dot: '#f43f5e' },
-    atendido: { label: 'Atendido', color: '#16a34a', dot: '#22c55e' },
-    cancelado: { label: 'Cancelado', color: '#9ca3af', dot: '#d1d5db' },
-    cerrado: { label: 'Cerrado', color: '#6b7280', dot: '#9ca3af' },
-};
-
-const PRIO_META = {
-    baja: { label: 'Baja', color: '#6b7280' },
-    media: { label: 'Media', color: '#2563eb' },
-    alta: { label: 'Alta', color: '#d97706' },
-    crítica: { label: 'Crítica', color: '#e11d48' },
-};
-
-const STATUS_TRANSITIONS = {
-    nuevo: ['en_asignacion', 'pendiente', 'cancelado'],
-    en_asignacion: ['en_progreso', 'pendiente', 'cancelado'],
-    en_progreso: ['atendido', 'pendiente', 'cancelado'],
-    pendiente: ['en_asignacion', 'en_progreso', 'cancelado'],
-    atendido: ['cerrado', 'cancelado'],
-    cancelado: [],
-    cerrado: [],
-};
-
-/**
- * Inicializa la aplicación después del login
- */
+// Proceder con el flujo de inicialización despues del login
 function initApp() {
     // Mostrar la interfaz principal
     document.getElementById('page-landing').style.display = 'none';

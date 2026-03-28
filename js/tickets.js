@@ -200,7 +200,6 @@ async function openTicketDetail(id) {
         console.error('Error cargando detalle:', e);
     }
 
-    // Reunir todas las fotos del ticket
     const todasFotos = [];
     if (t.imagen_url) todasFotos.push(t.imagen_url);
     if (Array.isArray(t.fotos_urls)) todasFotos.push(...t.fotos_urls);
@@ -213,40 +212,37 @@ async function openTicketDetail(id) {
             ${todasFotos.map((url, i) => `
                 <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;
                      border:1px solid var(--border);cursor:pointer;flex-shrink:0"
-                     onclick="abrirVisorFoto('${url}','${t.titulo}')" title="Ver foto ${i+1}">
-                    <img src="${url}" alt="Foto ${i+1}"
-                         style="width:100%;height:100%;object-fit:cover"
-                         onerror="this.parentElement.innerHTML='<div style=&quot;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:.7rem;color:var(--text3)&quot;>Error</div>'"/>
-                    <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s"
-                         onmouseenter="this.style.background='rgba(0,0,0,0.25)'"
-                         onmouseleave="this.style.background='rgba(0,0,0,0)'">
-                        <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-                              color:#fff;font-size:16px;opacity:0;transition:opacity .15s"
-                              onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0'">🔍</span>
-                    </div>
+                     onclick="abrirVisorFoto('${url}','${t.titulo.replace(/'/g, "\\'")}')" title="Ver foto ${i+1}">
+                     <img src="${url}" alt="Foto ${i+1}"
+                          style="width:100%;height:100%;object-fit:cover"
+                          onerror="this.parentElement.innerHTML='<div style=&quot;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:.7rem;color:var(--text3)&quot;>Error</div>'"/>
                 </div>`).join('')}
         </div>` : '';
 
-    const canChangeStatus = isAdmin();
-    const statusButtons   = canChangeStatus ? `
-        <div style="margin-bottom:16px">
-            <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-                Cambiar estado
+    const trans     = STATUS_TRANSITIONS[t.status] || [];
+    const isOwner   = t.solicitante_id === currentUser?.id;
+    let nextPossible = [];
+
+    if (isAdmin()) {
+        nextPossible = trans;
+    } else if (isOwner && ['nuevo', 'pendiente'].includes(t.status)) {
+        nextPossible = ['cancelado'];
+    }
+
+    const statusButtons = nextPossible.length > 0 ? `
+        <div style="margin-bottom:24px; padding:15px; background:var(--surface2); border-radius:12px; border:1px solid var(--border)">
+            <div style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                Gestión de Flujo / Acciones Disponibles
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-                ${Object.entries(STATUS_META).map(([k,v]) => {
-                    const activo = t.status === k;
-                    return `<button
-                        onclick="changeTicketStatus('${t.id}','${k}')"
-                        style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:500;cursor:${activo?'default':'pointer'};
-                               border:${activo?'2px':'1px'} solid ${v.color};
-                               background:${activo?v.color:'transparent'};
-                               color:${activo?'#fff':v.color};
-                               opacity:${activo?1:0.7};transition:all .15s"
-                        ${activo ? 'disabled' : ''}
-                        onmouseenter="if(!this.disabled)this.style.opacity='1'"
-                        onmouseleave="if(!this.disabled)this.style.opacity='0.7'">
-                        ${activo ? '✓ ' : ''}${v.label}
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                ${nextPossible.map(k => {
+                    const v = STATUS_META[k] || { color: '#6b7280', label: k };
+                    return `<button class="btn btn-sm" onclick="changeTicketStatus('${t.id}','${k}')"
+                        style="background:transparent; border:1.8px solid ${v.color}; color:${v.color}; border-radius:10px; font-weight:700; font-size:.72rem; padding:8px 16px; transition:all 0.25s; cursor:pointer;"
+                        onmouseenter="this.style.background='${v.color}'; this.style.color='#fff';"
+                        onmouseleave="this.style.background='transparent'; this.style.color='${v.color}';">
+                        ${k === 'cancelado' ? '✕ Cancelar ticket' : '✅ Mover a ' + v.label}
                     </button>`;
                 }).join('')}
             </div>
@@ -304,8 +300,8 @@ async function openTicketDetail(id) {
                 </div>
             </div>` : ''}`;
 
-    // Armar el body del modal
-    document.getElementById('td-id').textContent    = t.id;
+    // UI Updates
+    document.getElementById('td-id').textContent = t.id;
     document.getElementById('td-title').textContent = t.titulo;
     document.getElementById('td-body').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:.84rem">
@@ -328,14 +324,10 @@ async function openTicketDetail(id) {
                 <strong style="margin-left:6px;font-family:var(--font-mono);font-size:.76rem">${fmtDate(t.created_at)}</strong>
             </div>
         </div>
-
         <div style="margin-bottom:16px">
-            <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
-                Descripción
-            </div>
+            <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción</div>
             <p style="font-size:.86rem;line-height:1.65;color:var(--text)">${t.descripcion || '—'}</p>
         </div>
-
         ${galeriaHtml}
         ${statusButtons}
         ${historyHtml}
@@ -829,47 +821,6 @@ function renderMyTicketsInner(tickets) {
                 </div>
             </div>`;
     }).join('');
-}
-
-// ─────────────────────────────────────────
-// AGREGAR CAMPO DE FOTOS AL MODAL HTML
-// Se llama una vez al cargar la app para
-// inyectar el input de fotos en el modal
-// de nuevo ticket existente en index.html
-// ─────────────────────────────────────────
-function inyectarCampoFotos() {
-    // Buscar el campo de imagen_url original
-    const imagenGroup = document.getElementById('nt-imagen')?.closest('.form-group');
-    if (!imagenGroup) return;
-
-    // Reemplazarlo con el nuevo campo multi-fotos
-    imagenGroup.innerHTML = `
-        <label>Fotografías <span style="font-weight:400;color:var(--text3)">(opcional · máx. 5 imágenes, 5 MB c/u)</span></label>
-        <div id="zona-fotos" style="border:1.5px dashed var(--border);border-radius:8px;padding:18px;
-             text-align:center;cursor:pointer;transition:border-color .15s,background .15s"
-             onclick="document.getElementById('input-fotos-multiple').click()"
-             ondragover="event.preventDefault();this.style.borderColor='var(--verde)';this.style.background='var(--surface2)'"
-             ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
-             ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';
-                     onFotosSeleccionadas({files:event.dataTransfer.files})">
-            <div style="font-size:22px;margin-bottom:6px">📷</div>
-            <div style="font-size:.82rem;color:var(--text2)">
-                Arrastra fotos aquí o <span style="color:var(--verde);font-weight:500">haz clic para seleccionar</span>
-            </div>
-            <div style="font-size:.73rem;color:var(--text3);margin-top:3px">JPG, PNG, WebP</div>
-        </div>
-        <input type="file" id="input-fotos-multiple" multiple
-               accept="image/jpeg,image/png,image/webp"
-               style="display:none"
-               onchange="onFotosSeleccionadas(this)">
-        <div id="fotos-preview"></div>`;
-}
-
-// Inyectar el campo cuando el DOM esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inyectarCampoFotos);
-} else {
-    inyectarCampoFotos();
 }
 
 // ─────────────────────────────────────────

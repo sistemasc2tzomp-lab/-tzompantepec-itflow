@@ -281,6 +281,25 @@
                     <textarea id="nt-accion" placeholder="Describe el problema, pasos para reproducirlo, impacto operativo..."></textarea>
                     <div class="form-error" id="nt-accion-err">La descripción es obligatoria.</div>
                 </div>
+                <!-- Sección de fotos para adjuntar el soporte -->
+                <div class="form-group" style="margin-top:20px;">
+                    <label>Fotografías <span style="font-weight:400;color:var(--text3)">(opcional · máx. 5 imágenes, 5 MB c/u)</span></label>
+                    <div id="zona-fotos" style="border:1.5px dashed var(--border);border-radius:12px;padding:22px;
+                         text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);margin-top:8px"
+                         onclick="document.getElementById('nt-fotos').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='var(--verde)';this.style.background='var(--surface2)';this.style.transform='scale(1.01)'"
+                         ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface)';this.style.transform='scale(1)'"
+                         ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--surface)';this.style.transform='scale(1)';
+                                 onFotosSeleccionadas({files:event.dataTransfer.files})">
+                        <div style="font-size:26px;margin-bottom:8px">📸</div>
+                        <div style="font-size:.84rem;color:var(--text2);font-weight:500">
+                            Arrastra fotos aquí o <span style="color:var(--verde);text-decoration:underline">haz clic para seleccionar</span>
+                        </div>
+                        <div style="font-size:.73rem;color:var(--text3);margin-top:5px">Formatos permitidos: JPG, PNG, WebP</div>
+                    </div>
+                    <input type="file" id="nt-fotos" multiple accept="image/*" style="display:none" oninput="onFotosSeleccionadas(this)"/>
+                    <div id="fotos-preview"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-new-ticket')">Cancelar</button>
