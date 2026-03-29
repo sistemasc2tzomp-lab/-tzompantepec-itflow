@@ -1,53 +1,80 @@
 :root {
-    /* Paleta institucional — Verde Tlaxcala + Oro + Blanco Cálido */
-    --verde-deep: #0f3d26;
-    --verde: #1a5c3a;
-    --verde-med: #237a4d;
-    --verde-light: #2da464;
-    --verde-glow: rgba(45, 164, 100, 0.15);
-    --verde-pale: #f0f7f3;
+    /* Paleta Institucional Premium — Tzompantepec */
+    --p-50: #f0f7f3;
+    --p-100: #dcf0e5;
+    --p-200: #b9e0cc;
+    --p-300: #89c7a7;
+    --p-400: #57a67f;
+    --p-500: #3a8a63;
+    --p-600: #2d6e4f;
+    --p-700: #265842;
+    --p-800: #1f4736;
+    --p-900: #1a3d2e;
+    --p-950: #0f241b;
 
-    --oro: #c8962a;
-    --oro-med: #b58522;
-    --oro-pale: #fdfaf3;
+    /* Primary: Verde Institucional Tlaxcala */
+    --verde-deep: var(--p-950);
+    --verde: var(--p-700);
+    --verde-med: var(--p-600);
+    --verde-light: var(--p-500);
+    --verde-glow: rgba(58, 138, 99, 0.12);
+    --verde-pale: var(--p-50);
 
-    --bg: #f8f7f4;
-    --bg-alt: #f1efea;
+    /* Accent: Oro Nobiliario */
+    --oro: #bfa15c;
+    --oro-light: #dfcc9d;
+    --oro-med: #a68b42;
+    --oro-glow: rgba(191, 161, 92, 0.1);
+
+    /* Core Surfaces */
+    --bg: #f9f9fb;
+    --bg-alt: #f1f1f4;
     --surface: #ffffff;
-    --surface-glass: rgba(255, 255, 255, 0.85);
-    --surface-dark: #1c1a17;
+    --surface-2: #f8f9fa;
+    --surface-glass: rgba(255, 255, 255, 0.75);
+    --surface-dark: #12141d;
 
-    --border: rgba(26, 92, 58, 0.08);
-    --border-med: rgba(26, 92, 58, 0.15);
-    --border-glass: rgba(255, 255, 255, 0.2);
+    /* Borders & Accents */
+    --border: rgba(0, 0, 0, 0.05);
+    --border-med: rgba(0, 0, 0, 0.1);
+    --border-verde: rgba(58, 138, 99, 0.15);
 
-    --text: #1c1a17;
-    --text-med: #5a5548;
-    --text-muted: #9a9082;
-    --text-on-verde: #ffffff;
+    /* Text Hierarchy */
+    --text: #1a1c23;
+    --text-2: #4a5568;
+    --text-3: #718096;
+    --text-light: #ffffff;
 
     /* Semantic */
-    --success: #2da464;
-    --warning: #c8962a;
-    --danger: #e74c3c;
-    --info: #3498db;
+    --success: #38a169;
+    --warning: #d69e2e;
+    --danger: #e53e3e;
+    --info: #3182ce;
 
-    /* Typography */
-    --font-display: 'DM Serif Display', Georgia, serif;
-    --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'DM Mono', monospace;
+    /* Typography — Institutional & Clean */
+    --font-display: 'Lora', serif;
+    --font-body: 'Outfit', -apple-system, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 
-    /* Effects */
-    --radius-sm: 8px;
-    --radius-md: 14px;
-    --radius-lg: 20px;
-    --radius-xl: 32px;
+    /* Spacing & Scaling */
+    --gap-xs: 4px;
+    --gap-sm: 8px;
+    --gap-md: 16px;
+    --gap-lg: 24px;
+    --gap-xl: 40px;
 
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 20px 60px -10px rgba(26, 92, 58, 0.12);
-    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    /* Effects — Premium Softness */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 28px;
+    --radius-full: 9999px;
 
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.04), 0 2px 6px -1px rgba(0,0,0,0.02);
+    --shadow-lg: 0 12px 36px -8px rgba(0,0,0,0.08), 0 8px 16px -6px rgba(0,0,0,0.02);
+    --shadow-verde: 0 12px 30px -10px rgba(58, 138, 99, 0.25);
+
+    --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     --transition-fast: all 0.15s ease;
 }
