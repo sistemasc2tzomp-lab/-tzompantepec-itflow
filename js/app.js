@@ -204,37 +204,38 @@ window.navigate = navigate;
 window.buildNav = buildNav;
 
 // Funciones de autenticación (definidas en auth.js)
-window.doLogin = doLogin;
-window.doLogout = doLogout;
-window.isAdmin = isAdmin;
+window.doLogin  = typeof doLogin  !== 'undefined' ? doLogin  : () => {};
+window.doLogout = typeof doLogout !== 'undefined' ? doLogout : () => {};
+window.isAdmin  = typeof isAdmin  !== 'undefined' ? isAdmin  : () => false;
 
-// Funciones de tickets
-window.openTicketDetail = openTicketDetail;
-window.openNewTicketModal = openNewTicketModal;
-window.submitNewTicket = submitNewTicket;
-window.openAssignModal = openAssignModal;
-window.confirmAssign = confirmAssign;
-window.addComment = addComment;
-window.changeStatus = changeStatus;
-window.renderMyTickets = renderMyTickets;
-window.setMyFilter = setMyFilter;
+// Funciones de tickets — stubs seguros
+window.openTicketDetail   = typeof openTicketDetail   !== 'undefined' ? openTicketDetail   : () => {};
+window.openNewTicketModal = typeof openNewTicketModal !== 'undefined' ? openNewTicketModal : () => {};
+window.submitNewTicket    = typeof submitNewTicket    !== 'undefined' ? submitNewTicket    : () => {};
+window.openAssignModal    = typeof openAssignModal    !== 'undefined' ? openAssignModal    : () => {};
+window.confirmAssign      = typeof confirmAssign      !== 'undefined' ? confirmAssign      : () => {};
+window.addComment         = typeof addComment         !== 'undefined' ? addComment         : () => {};
+window.changeTicketStatus = typeof changeTicketStatus !== 'undefined' ? changeTicketStatus : () => {};
+window.changeStatus       = window.changeTicketStatus;
+window.renderMyTickets    = typeof renderMyTickets    !== 'undefined' ? renderMyTickets    : () => {};
+window.setMyFilter        = typeof setMyFilter        !== 'undefined' ? setMyFilter        : () => {};
 
-// Funciones de filtrado y paginación
-window.onSearchChange = onSearchChange;
-window.onFilterChange = onFilterChange;
-window.setPage = setPage;
+// Funciones de filtrado y paginación — stubs seguros
+window.onSearchChange = typeof onSearchChange !== 'undefined' ? onSearchChange : () => {};
+window.onFilterChange = typeof onFilterChange !== 'undefined' ? onFilterChange : () => {};
+window.setPage        = typeof setPage        !== 'undefined' ? setPage        : () => {};
 
-// Funciones de exportación
-window.exportExcel = exportExcel;
-window.exportPDF = exportPDF;
-window.exportCriticos = exportCriticos;
-window.exportResueltos = exportResueltos;
+// Funciones de exportación — stubs seguros si no están definidas en reports.js
+window.exportExcel     = typeof exportExcel     !== 'undefined' ? exportExcel     : () => toast('Exportación no disponible.', 'error');
+window.exportPDF       = typeof exportPDF       !== 'undefined' ? exportPDF       : () => toast('Exportación no disponible.', 'error');
+window.exportCriticos  = typeof exportCriticos  !== 'undefined' ? exportCriticos  : () => toast('Exportación no disponible.', 'error');
+window.exportResueltos = typeof exportResueltos !== 'undefined' ? exportResueltos : () => toast('Exportación no disponible.', 'error');
 
-// Funciones de UI
-window.toggleMobileMenu = toggleMobileMenu;
-window.closeMobileMenu = closeMobileMenu;
+// Funciones de UI — stubs seguros
+window.toggleMobileMenu = typeof toggleMobileMenu !== 'undefined' ? toggleMobileMenu : () => {};
+window.closeMobileMenu  = typeof closeMobileMenu  !== 'undefined' ? closeMobileMenu  : () => {};
 
-// Funciones de configuración y utilidades
-window.showSQLGuide = showSQLGuide;
-window.copySQLGuide = copySQLGuide;
-window.connectSupabase = connectSupabase;
+// Funciones de configuración y utilidades — stubs seguros
+window.showSQLGuide    = typeof showSQLGuide    !== 'undefined' ? showSQLGuide    : () => {};
+window.copySQLGuide    = typeof copySQLGuide    !== 'undefined' ? copySQLGuide    : () => {};
+window.connectSupabase = typeof connectSupabase !== 'undefined' ? connectSupabase : () => {};

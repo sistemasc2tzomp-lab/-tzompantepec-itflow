@@ -1,94 +1,46 @@
-// ════════════════════════════════════════════════════════════════
-// INICIALIZACIÓN DE SUPABASE - CARGA SEGURA DE LIBRERÍA
-// ════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+// INIT-SUPABASE.JS — versión corregida
+// Guarda credenciales automáticamente y
+// no hace referencia a funciones externas
+// ══════════════════════════════════════════
 
-(function() {
-    'use strict';
-    
-    // Función para esperar a que Supabase esté disponible
-    function waitForSupabase(callback, maxAttempts = 50) {
-        let attempts = 0;
-        
-        function check() {
-            attempts++;
-            
-            if (window.supabase && window.supabase.createClient) {
-                console.log('✅ Supabase está disponible');
-                callback();
-            } else if (attempts < maxAttempts) {
-                console.log(`⏳ Esperando Supabase... intento ${attempts}/${maxAttempts}`);
-                setTimeout(check, 100);
-            } else {
-                console.error('❌ Supabase no se pudo cargar después de varios intentos');
-                // Intentar cargar manualmente
-                loadSupabaseManually(callback);
-            }
+(function autoInitSupabase() {
+    function init() {
+        const urlEl = document.getElementById('supa-url');
+        const keyEl = document.getElementById('supa-key');
+        const urlFromHtml = urlEl?.value?.trim().replace(/\/$/, '') || '';
+        const keyFromHtml = keyEl?.value?.trim() || '';
+
+        // Guardar en localStorage si están en el HTML
+        if (urlFromHtml && keyFromHtml) {
+            localStorage.setItem('supa_url', urlFromHtml);
+            localStorage.setItem('supa_key', keyFromHtml);
         }
-        
-        check();
+
+        if (typeof window.supabase === 'undefined') {
+            console.error('Supabase SDK no cargado.');
+            return;
+        }
+
+        console.log('Supabase ya disponible en window');
+
+        const url = urlFromHtml || localStorage.getItem('supa_url') || '';
+        const key = keyFromHtml || localStorage.getItem('supa_key') || '';
+
+        if (!url || !key) {
+            console.info('Sin credenciales guardadas — esperando configuración manual.');
+            return;
+        }
+
+        if (!window.supabaseClient) {
+            window.supabaseClient = window.supabase.createClient(url, key);
+            console.log('Supabase: cliente inicializado automáticamente.');
+        }
     }
-    
-    // Cargar Supabase manualmente si no está disponible
-    function loadSupabaseManually(callback) {
-        console.log('🔧 Cargando Supabase manualmente...');
-        
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-        script.async = true;
-        
-        script.onload = function() {
-            console.log('✅ Librería Supabase cargada manualmente');
-            callback();
-        };
-        
-        script.onerror = function() {
-            console.error('❌ Error cargando librería Supabase');
-        };
-        
-        document.head.appendChild(script);
-    }
-    
-    // Inicializar cuando el DOM esté listo
-    function initSupabase() {
-        waitForSupabase(function() {
-            // Conectar automáticamente si hay credenciales
-            const url = document.getElementById('supa-url')?.value;
-            const key = document.getElementById('supa-key')?.value;
-            
-            if (url && key) {
-                try {
-                    const { createClient } = window.supabase;
-                    window.supabaseClient = createClient(url, key);
-                    
-                    console.log('✅ Supabase conectado automáticamente');
-                    
-                    // Actualizar UI
-                    const bannerStatus = document.getElementById('banner-status');
-                    if (bannerStatus) {
-                        bannerStatus.textContent = '● CONECTADO';
-                        bannerStatus.className = 'banner-status connected';
-                    }
-                    
-                    // Ocultar banner después de 2 segundos
-                    setTimeout(() => {
-                        const configBanner = document.getElementById('config-banner');
-                        if (configBanner) {
-                            configBanner.style.display = 'none';
-                        }
-                    }, 2000);
-                    
-                } catch (error) {
-                    console.error('❌ Error conectando Supabase:', error);
-                }
-            }
-        });
-    }
-    
-    // Iniciar cuando el documento esté listo
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSupabase);
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        initSupabase();
+        init();
     }
-    
 })();

@@ -1,304 +1,495 @@
 // ══════════════════════════════════════════
-// REPORTES Y EXPORTACIONES
+// REPORTES — Exportación real a Excel y PDF
+// Usa las librerías SheetJS (XLSX) y jsPDF
+// que ya están cargadas en index.html
 // ══════════════════════════════════════════
 
+// ─────────────────────────────────────────
+// RENDER VISTA REPORTES
+// ─────────────────────────────────────────
 async function renderReportes() {
     const el = document.getElementById('view-reportes');
-    
-    showLoading(true);
-    const tickets = await loadTickets();
-    const users = await loadUsers();
-    showLoading(false);
-    
-    const total = tickets.length;
-    const activos = tickets.filter(x => !['cerrado', 'cancelado'].includes(x.status)).length;
-    const atendidos = tickets.filter(x => x.status === 'atendido').length;
-    const criticos = tickets.filter(x => x.prioridad === 'crítica').length;
+    if (!el) return;
 
-    el.innerHTML = '<h2 style="font-family:var(--font-display);font-size:1.4rem;color:var(--verde);margin-bottom:6px">Reportes</h2>' +
-        '<p class="section-sub">Exporta y analiza la información del sistema</p>' +
-        '<div class="report-grid">' +
-        [
-            { icon: '📊', color: '#e8f5ee', title: 'Reporte general', desc: 'Todos los tickets del sistema', fn: 'exportExcel()' },
-            { icon: '📋', color: '#eff6ff', title: 'Reporte PDF', desc: 'Documento imprimible de tickets', fn: 'exportPDF()' },
-            { icon: '⚠️', color: '#fff1f2', title: 'Tickets críticos', desc: 'Solo prioridad crítica y alta', fn: 'exportCriticos()' },
-            { icon: '✅', color: '#f0fdf4', title: 'Tickets resueltos', desc: 'Historial de tickets atendidos', fn: 'exportResueltos()' },
-        ].map(r => {
-            return '<div class="report-card" onclick="' + r.fn + '">' +
-                '<div class="report-card-icon" style="background:' + r.color + ';font-size:1.4rem">' + r.icon + '</div>' +
-                '<div class="report-card-title">' + r.title + '</div>' +
-                '<div class="report-card-desc">' + r.desc + '</div>' +
-                '</div>';
-        }).join('') +
-        '</div>' +
-        '<div class="panel"><div class="panel-header"><div class="panel-title">📈 Resumen estadístico</div></div>' +
-        '<div class="panel-body">' +
-        '<div class="metrics-grid">' +
-        mCard('#1a5c3a', '#e8f5ee', total, 'Total tickets', 'Histórico completo', iTicket('18')) +
-        mCard('#1a5c3a', '#e8f5ee', activos, 'Activos', 'En este momento', iClock('18')) +
-        mCard('#16a34a', '#f0fdf4', atendidos, 'Atendidos', 'Resueltos', iCheck('18')) +
-        mCard('#e11d48', '#fff1f2', criticos, 'Críticos', 'Alta prioridad', iAlert('18')) +
-        '</div>' +
-        '<div style="margin-top:18px">' +
-        Object.entries(STATUS_META).map(entry => {
-            const k = entry[0], v = entry[1];
-            const cnt = tickets.filter(x => x.status === k).length;
-            const pct = total ? Math.round((cnt / total) * 100) : 0;
-            return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' +
-                '<div style="width:120px;font-size:.82rem;color:var(--text2)">' + v.label + '</div>' +
-                '<div style="flex:1;height:7px;background:var(--surface3);border-radius:4px;overflow:hidden">' +
-                '<div style="width:' + pct + '%;height:100%;background:' + v.color + ';border-radius:4px"></div>' +
-                '</div>' +
-                '<div style="width:50px;text-align:right;font-size:.78rem;color:var(--text3)">' + cnt + ' (' + pct + '%)</div>' +
-                '</div>';
-        }).join('') +
-        '</div>' +
-        '</div></div>';
-}
+    const tickets  = window.gTickets  || [];
+    const usuarios = window.gUsers    || [];
+    const hoy      = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
 
-// Funciones de exportación
-function exportExcel() {
-    const tickets = window.gTickets || [];
-    const users = window.gUsers || [];
-    
-    if (tickets.length === 0) {
-        toast('No hay datos para exportar', 'error');
-        return;
-    }
-    
-    // Preparar datos para Excel
-    const data = tickets.map(t => {
-        const solicitante = users.find(u => u.id === t.solicitante_id);
-        const asignado = users.find(u => u.id === t.asignado_id);
-        
-        return {
-            'ID': t.id,
-            'Título': t.titulo,
-            'Descripción': t.descripcion?.substring(0, 100) + '...',
-            'Categoría': t.categoria,
-            'Prioridad': t.prioridad,
-            'Estado': t.status,
-            'Departamento': t.departamento,
-            'Solicitante': solicitante?.nombre || '—',
-            'Asignado a': asignado?.nombre || 'Sin asignar',
-            'Fecha Creación': fmtDate(t.created_at),
-            'Fecha Actualización': fmtDate(t.updated_at)
-        };
+    // Calcular métricas
+    const total      = tickets.length;
+    const abiertos   = tickets.filter(t => !['cerrado','cancelado'].includes(t.status)).length;
+    const cerrados   = tickets.filter(t => t.status === 'cerrado').length;
+    const criticos   = tickets.filter(t => t.prioridad === 'crítica' && !['cerrado','cancelado'].includes(t.status)).length;
+    const sinAsignar = tickets.filter(t => !t.asignado_id).length;
+
+    // Tickets últimos 7 días
+    const hace7 = new Date(); hace7.setDate(hace7.getDate() - 7);
+    const ultimos7 = tickets.filter(t => new Date(t.created_at) >= hace7).length;
+
+    // Tasa de resolución
+    const tasa = total > 0 ? Math.round((cerrados / total) * 100) : 0;
+
+    // Por departamento
+    const porDepto = {};
+    tickets.forEach(t => {
+        const d = t.departamento || 'Sin depto.';
+        porDepto[d] = (porDepto[d] || 0) + 1;
     });
-    
-    // Crear libro de Excel
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
-    
-    // Descargar archivo
-    const fileName = `tickets_tzompantepec_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    
-    toast('Reporte Excel descargado exitosamente', 'success');
+    const topDeptos = Object.entries(porDepto).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+    // Por técnico
+    const porTecnico = {};
+    tickets.forEach(t => {
+        if (!t.asignado_id) return;
+        const nombre = getUserName(t.asignado_id);
+        if (!porTecnico[nombre]) porTecnico[nombre] = { total:0, cerrados:0 };
+        porTecnico[nombre].total++;
+        if (t.status === 'cerrado') porTecnico[nombre].cerrados++;
+    });
+
+    el.innerHTML = `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+            <div>
+                <h2 style="font-size:1.1rem;font-weight:700;color:var(--text);margin:0">Reportes</h2>
+                <p style="font-size:.83rem;color:var(--text2);margin:3px 0 0">
+                    Repositorio de datos del sistema — ${hoy}
+                </p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" onclick="exportarExcel()">
+                    ↓ Exportar Excel
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportarPDF()">
+                    ↓ Exportar PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Métricas principales -->
+        <div class="metrics-grid" style="margin-bottom:20px">
+            ${mCard('#1a5c38','#e8f5ee', total,    'Total tickets',     '',           iTicket('18'))}
+            ${mCard('#2563eb','#eff6ff', abiertos,  'Abiertos',          '',           iClock('18'))}
+            ${mCard('#16a34a','#f0fdf4', cerrados,  'Cerrados',          '',           iCheck('18'))}
+            ${mCard('#d97706','#fefce8', tasa+'%',  'Tasa resolución',   '',           iChart('18'))}
+            ${mCard('#dc2626','#fef2f2', criticos,  'Críticos activos',  '',           iAlert('18'))}
+            ${mCard('#7c3aed','#f5f3ff', sinAsignar,'Sin asignar',       '',           iUser('18'))}
+            ${mCard('#0891b2','#ecfeff', ultimos7,  'Últimos 7 días',    '',           iClock('18'))}
+            ${mCard('#059669','#ecfdf5', usuarios.length,'Usuarios',     '',           iUsers('18'))}
+        </div>
+
+        <!-- Distribución por estado y prioridad -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="panel">
+                <div class="panel-body">
+                    <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                        Distribución por estado
+                    </div>
+                    ${renderBarrasEstado(tickets)}
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-body">
+                    <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                        Tickets por prioridad
+                    </div>
+                    ${renderBarrasPrioridad(tickets)}
+                </div>
+            </div>
+        </div>
+
+        <!-- Por departamento -->
+        <div class="panel" style="margin-bottom:14px">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Tickets por departamento
+                </div>
+                ${topDeptos.length ? renderBarrasDepto(topDeptos, total) : '<p style="font-size:.82rem;color:var(--text3)">Sin tickets registrados.</p>'}
+            </div>
+        </div>
+
+        <!-- Rendimiento por técnico -->
+        <div class="panel" style="margin-bottom:14px">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Rendimiento por técnico
+                </div>
+                ${renderTablaTecnicos(porTecnico)}
+            </div>
+        </div>
+
+        <!-- Directorio de usuarios -->
+        <div class="panel">
+            <div class="panel-body">
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:12px">
+                    Directorio de usuarios (${usuarios.length})
+                </div>
+                ${renderTablaUsuarios(usuarios, tickets)}
+            </div>
+        </div>`;
 }
 
-function exportPDF() {
-    const tickets = window.gTickets || [];
-    const users = window.gUsers || [];
-    
-    if (tickets.length === 0) {
-        toast('No hay datos para exportar', 'error');
+// ─────────────────────────────────────────
+// GRÁFICAS EN HTML/CSS
+// ─────────────────────────────────────────
+function renderBarrasEstado(tickets) {
+    const total = tickets.length || 1;
+    return Object.entries(STATUS_META).map(([k, v]) => {
+        const n    = tickets.filter(t => t.status === k).length;
+        const pct  = Math.round((n / total) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${v.label}</span>
+                <span style="font-weight:600">${n} <span style="color:var(--text3);font-weight:400">(${pct}%)</span></span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${v.color};border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderBarrasPrioridad(tickets) {
+    const total = tickets.length || 1;
+    return Object.entries(PRIO_META).map(([k, v]) => {
+        const n   = tickets.filter(t => t.prioridad === k).length;
+        const pct = Math.round((n / total) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${v.label}</span>
+                <span style="font-weight:600">${n} <span style="color:var(--text3);font-weight:400">(${pct}%)</span></span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${v.color};border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderBarrasDepto(topDeptos, total) {
+    const max = topDeptos[0]?.[1] || 1;
+    return topDeptos.map(([nombre, n]) => {
+        const pct = Math.round((n / max) * 100);
+        return `
+        <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:3px">
+                <span>${nombre}</span>
+                <span style="font-weight:600">${n}</span>
+            </div>
+            <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:var(--verde,#1a5c38);border-radius:3px;transition:width .4s"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderTablaTecnicos(porTecnico) {
+    const entries = Object.entries(porTecnico);
+    if (!entries.length) return `<p style="font-size:.82rem;color:var(--text3)">Sin técnicos registrados.</p>`;
+    return `
+        <div class="table-wrap">
+            <table class="tickets-table">
+                <thead><tr>
+                    <th>Técnico</th><th>Total</th><th>Resueltos</th><th>En curso</th><th>% Resolución</th>
+                </tr></thead>
+                <tbody>
+                    ${entries.sort((a,b) => b[1].total - a[1].total).map(([nombre, d]) => {
+                        const pct = d.total > 0 ? Math.round((d.cerrados / d.total) * 100) : 0;
+                        return `<tr>
+                            <td style="font-weight:600">${nombre}</td>
+                            <td>${d.total}</td>
+                            <td style="color:#16a34a;font-weight:600">${d.cerrados}</td>
+                            <td style="color:#d97706">${d.total - d.cerrados}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px">
+                                        <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:3px"></div>
+                                    </div>
+                                    <span style="font-size:.75rem;min-width:28px">${pct}%</span>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function renderTablaUsuarios(usuarios, tickets) {
+    if (!usuarios.length) return `<p style="font-size:.82rem;color:var(--text3)">Sin usuarios.</p>`;
+    return `
+        <div class="table-wrap">
+            <table class="tickets-table">
+                <thead><tr>
+                    <th>Usuario</th><th>Correo</th><th>Rol</th><th>Departamento</th>
+                    <th>Tickets solicitados</th><th>Tickets asignados</th>
+                </tr></thead>
+                <tbody>
+                    ${usuarios.map(u => {
+                        const solicitados = tickets.filter(t => t.solicitante_id === u.id).length;
+                        const asignados   = tickets.filter(t => t.asignado_id    === u.id).length;
+                        return `<tr>
+                            <td style="font-weight:600">${u.nombre}</td>
+                            <td style="font-size:.8rem;color:var(--text2)">${u.email}</td>
+                            <td><span class="badge badge-${u.rol === 'admin' ? 'atendido' : 'nuevo'}">${u.rol}</span></td>
+                            <td style="font-size:.8rem">${u.departamento || '—'}</td>
+                            <td style="text-align:center">${solicitados}</td>
+                            <td style="text-align:center">${asignados}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+// ─────────────────────────────────────────
+// ÍCONOS AUXILIARES (si no existen en utils)
+// ─────────────────────────────────────────
+function iCheck(s='16') {
+    return `<svg width="${s}" height="${s}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+}
+function iChart(s='16') {
+    return `<svg width="${s}" height="${s}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`;
+}
+
+// ─────────────────────────────────────────
+// EXPORTAR A EXCEL (SheetJS / XLSX)
+// ─────────────────────────────────────────
+function exportarExcel() {
+    if (typeof XLSX === 'undefined') {
+        toast('Librería XLSX no disponible. Verifica que esté cargada en index.html.', 'error');
         return;
     }
-    
-    // Crear documento PDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    // Configuración de página
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    let yPosition = 20;
-    
-    // Título
-    doc.setFontSize(20);
-    doc.setTextColor(26, 92, 58); // Color verde institucional
-    doc.text('Reporte de Tickets - H. Ayuntamiento de Tzompantepec', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 15;
-    
-    // Fecha
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 20;
-    
-    // Resumen estadístico
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Resumen Estadístico', 20, yPosition);
-    yPosition += 10;
-    
-    const total = tickets.length;
-    const activos = tickets.filter(t => !['cerrado', 'cancelado'].includes(t.status)).length;
-    const resueltos = tickets.filter(t => t.status === 'atendido').length;
-    
-    doc.setFontSize(10);
-    doc.text(`Total de tickets: ${total}`, 30, yPosition);
-    yPosition += 8;
-    doc.text(`Tickets activos: ${activos}`, 30, yPosition);
-    yPosition += 8;
-    doc.text(`Tickets resueltos: ${resueltos}`, 30, yPosition);
-    yPosition += 15;
-    
-    // Tabla de tickets
-    doc.setFontSize(12);
-    doc.text('Detalle de Tickets', 20, yPosition);
-    yPosition += 15;
-    
-    // Encabezados de tabla
-    const headers = ['ID', 'Título', 'Estado', 'Prioridad', 'Fecha'];
-    const headerWidths = [30, 60, 30, 30, 40];
-    let xPos = 20;
-    
-    doc.setFontSize(9);
+
+    const tickets  = window.gTickets  || [];
+    const usuarios = window.gUsers    || [];
+
+    // Hoja 1: Tickets
+    const ticketsData = tickets.map(t => ({
+        'ID':           t.id,
+        'Título':       t.titulo       || t.asunto || '',
+        'Estado':       STATUS_META[t.status]?.label   || t.status   || '',
+        'Prioridad':    PRIO_META[t.prioridad]?.label  || t.prioridad || '',
+        'Departamento': t.departamento || '',
+        'Categoría':    t.categoria    || '',
+        'Solicitante':  getUserName(t.solicitante_id),
+        'Técnico':      t.asignado_id ? getUserName(t.asignado_id) : 'Sin asignar',
+        'Descripción':  t.descripcion  || '',
+        'Fotos':        (t.imagen_url ? 1 : 0) + (Array.isArray(t.fotos_urls) ? t.fotos_urls.length : 0),
+        'Creado':       t.created_at   ? new Date(t.created_at).toLocaleString('es-MX')  : '',
+        'Actualizado':  t.updated_at   ? new Date(t.updated_at).toLocaleString('es-MX')  : '',
+        'Cerrado':      t.cerrado_en   ? new Date(t.cerrado_en).toLocaleString('es-MX')  : '',
+    }));
+
+    // Hoja 2: Usuarios
+    const usuariosData = usuarios.map(u => ({
+        'Nombre':       u.nombre       || '',
+        'Correo':       u.email        || '',
+        'Rol':          u.rol          || '',
+        'Departamento': u.departamento || '',
+        'Registrado':   u.created_at   ? new Date(u.created_at).toLocaleString('es-MX') : '',
+        'Tickets solicitados': tickets.filter(t => t.solicitante_id === u.id).length,
+        'Tickets asignados':   tickets.filter(t => t.asignado_id    === u.id).length,
+    }));
+
+    // Hoja 3: Resumen por departamento
+    const porDepto = {};
+    tickets.forEach(t => {
+        const d = t.departamento || 'Sin depto.';
+        if (!porDepto[d]) porDepto[d] = { total:0, abiertos:0, cerrados:0, criticos:0 };
+        porDepto[d].total++;
+        if (!['cerrado','cancelado'].includes(t.status)) porDepto[d].abiertos++;
+        if (t.status === 'cerrado') porDepto[d].cerrados++;
+        if (t.prioridad === 'crítica') porDepto[d].criticos++;
+    });
+    const deptoData = Object.entries(porDepto).map(([nombre, d]) => ({
+        'Departamento': nombre,
+        'Total':        d.total,
+        'Abiertos':     d.abiertos,
+        'Cerrados':     d.cerrados,
+        'Críticos':     d.criticos,
+        '% Resolución': d.total > 0 ? Math.round((d.cerrados / d.total) * 100) + '%' : '0%',
+    }));
+
+    // Crear libro
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ticketsData),  'Tickets');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usuariosData), 'Usuarios');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(deptoData),    'Por departamento');
+
+    // Descargar
+    const fecha = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `mesa-servicios-TI_${fecha}.xlsx`);
+    toast('Excel exportado correctamente.', 'success');
+}
+
+// ─────────────────────────────────────────
+// EXPORTAR A PDF (jsPDF)
+// ─────────────────────────────────────────
+function exportarPDF() {
+    if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+        toast('Librería jsPDF no disponible. Verifica que esté cargada en index.html.', 'error');
+        return;
+    }
+
+    const { jsPDF: PDF } = window.jspdf || window;
+    const doc  = new PDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const tickets  = window.gTickets || [];
+    const hoy  = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+
+    // ── Portada ──────────────────────────────
+    doc.setFillColor(26, 92, 56);
+    doc.rect(0, 0, 297, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    headers.forEach((header, i) => {
-        doc.text(header, xPos, yPosition);
-        xPos += headerWidths[i];
-    });
-    yPosition += 10;
-    
-    // Filas de datos
+    doc.text('Mesa de Servicios TI', 14, 16);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    tickets.slice(0, 20).forEach(ticket => {
-        if (yPosition > pageHeight - 30) {
+    doc.text('H. Ayuntamiento de Tzompantepec — Reporte generado el ' + hoy, 14, 25);
+    doc.setFontSize(9);
+    doc.text(`Total de tickets: ${tickets.length}`, 14, 33);
+
+    let y = 50;
+
+    // ── Resumen estadístico ──────────────────
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen estadístico', 14, y);
+    y += 7;
+
+    const abiertos  = tickets.filter(t => !['cerrado','cancelado'].includes(t.status)).length;
+    const cerrados  = tickets.filter(t => t.status === 'cerrado').length;
+    const criticos  = tickets.filter(t => t.prioridad === 'crítica').length;
+    const tasa      = tickets.length > 0 ? Math.round((cerrados / tickets.length) * 100) : 0;
+
+    const stats = [
+        ['Total tickets', tickets.length],
+        ['Abiertos',      abiertos],
+        ['Cerrados',      cerrados],
+        ['Críticos',      criticos],
+        ['Tasa resolución', tasa + '%'],
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    stats.forEach(([label, val], i) => {
+        const x = 14 + (i * 55);
+        doc.setFillColor(232, 245, 238);
+        doc.roundedRect(x, y, 50, 16, 2, 2, 'F');
+        doc.setTextColor(26, 92, 56);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(val), x + 25, y + 9, { align: 'center' });
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(label, x + 25, y + 14, { align: 'center' });
+    });
+    y += 24;
+
+    // ── Tabla de tickets ─────────────────────
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Listado de tickets', 14, y);
+    y += 6;
+
+    // Cabecera tabla
+    const cols   = [25, 80, 28, 28, 40, 40, 28];
+    const headers= ['ID', 'Título', 'Estado', 'Prioridad', 'Departamento', 'Técnico', 'Fecha'];
+    doc.setFillColor(26, 92, 56);
+    doc.rect(14, y, 269, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    let x = 14;
+    headers.forEach((h, i) => { doc.text(h, x + 2, y + 5); x += cols[i]; });
+    y += 7;
+
+    // Filas
+    doc.setFont('helvetica', 'normal');
+    tickets.slice(0, 40).forEach((t, idx) => {
+        if (y > 185) {
             doc.addPage();
-            yPosition = 20;
+            y = 20;
         }
-        
-        xPos = 20;
-        const rowData = [
-            ticket.id.substring(0, 8),
-            ticket.titulo.substring(0, 20),
-            ticket.status,
-            ticket.prioridad,
-            new Date(ticket.created_at).toLocaleDateString('es-MX')
+        const bg = idx % 2 === 0 ? [248, 248, 248] : [255, 255, 255];
+        doc.setFillColor(...bg);
+        doc.rect(14, y, 269, 6, 'F');
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(7.5);
+
+        const row = [
+            (t.id || '').substring(0, 12),
+            (t.titulo || t.asunto || '').substring(0, 38),
+            STATUS_META[t.status]?.label   || t.status   || '',
+            PRIO_META[t.prioridad]?.label  || t.prioridad || '',
+            (t.departamento || '').substring(0, 20),
+            t.asignado_id ? getUserName(t.asignado_id).split(' ')[0] : 'Sin asignar',
+            t.created_at ? new Date(t.created_at).toLocaleDateString('es-MX') : '',
         ];
-        
-        rowData.forEach((data, i) => {
-            doc.text(data, xPos, yPosition);
-            xPos += headerWidths[i];
+
+        x = 14;
+        row.forEach((val, i) => {
+            doc.text(String(val), x + 2, y + 4.5);
+            x += cols[i];
         });
-        yPosition += 8;
+        y += 6;
     });
-    
-    // Descargar PDF
-    const fileName = `reporte_tickets_tzompantepec_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-    
-    toast('Reporte PDF descargado exitosamente', 'success');
+
+    if (tickets.length > 40) {
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`... y ${tickets.length - 40} tickets más. Exporta Excel para ver el listado completo.`, 14, y + 5);
+    }
+
+    // ── Pie de página en todas las páginas ───
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+            `Mesa de Servicios TI — H. Ayuntamiento de Tzompantepec — Página ${i} de ${totalPages}`,
+            148.5, 205, { align: 'center' }
+        );
+    }
+
+    // Descargar
+    const fecha = new Date().toISOString().slice(0, 10);
+    doc.save(`reporte-tickets_${fecha}.pdf`);
+    toast('PDF exportado correctamente.', 'success');
 }
 
+// ─────────────────────────────────────────
+// ALIASES para compatibilidad con app.js
+// ─────────────────────────────────────────
+function exportExcel()    { exportarExcel(); }
+function exportPDF()      { exportarPDF();   }
 function exportCriticos() {
-    const tickets = window.gTickets || [];
-    const users = window.gUsers || [];
-    
-    // Filtrar tickets críticos y de alta prioridad
-    const criticalTickets = tickets.filter(t => 
-        t.prioridad === 'crítica' || t.prioridad === 'alta'
-    );
-    
-    if (criticalTickets.length === 0) {
-        toast('No hay tickets críticos para exportar', 'error');
-        return;
-    }
-    
-    // Preparar datos
-    const data = criticalTickets.map(t => {
-        const solicitante = users.find(u => u.id === t.solicitante_id);
-        const asignado = users.find(u => u.id === t.asignado_id);
-        
-        return {
-            'ID': t.id,
-            'Título': t.titulo,
-            'Prioridad': t.prioridad.toUpperCase(),
-            'Estado': t.status,
-            'Departamento': t.departamento,
-            'Solicitante': solicitante?.nombre || '—',
-            'Asignado a': asignado?.nombre || 'Sin asignar',
-            'Días activo': Math.floor((new Date() - new Date(t.created_at)) / (1000 * 60 * 60 * 24)),
-            'Fecha Creación': fmtDate(t.created_at)
-        };
-    });
-    
-    // Ordenar por prioridad (crítica primero) y fecha
-    data.sort((a, b) => {
-        if (a.Prioridad === 'CRÍTICA' && b.Prioridad !== 'CRÍTICA') return -1;
-        if (a.Prioridad !== 'CRÍTICA' && b.Prioridad === 'CRÍTICA') return 1;
-        return new Date(b['Fecha Creación']) - new Date(a['Fecha Creación']);
-    });
-    
-    // Crear Excel
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Tickets Críticos');
-    
-    const fileName = `tickets_criticos_tzompantepec_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    
-    toast(`Reporte de ${criticalTickets.length} tickets críticos descargado`, 'success');
+    // Filtrar solo críticos y exportar Excel
+    const backup = window.gTickets;
+    window.gTickets = (backup || []).filter(t =>
+        t.prioridad === 'crítica' && !['cerrado','cancelado'].includes(t.status));
+    exportarExcel();
+    window.gTickets = backup;
+}
+function exportResueltos() {
+    // Filtrar solo resueltos/cerrados y exportar
+    const backup = window.gTickets;
+    window.gTickets = (backup || []).filter(t => t.status === 'cerrado');
+    exportarExcel();
+    window.gTickets = backup;
 }
 
-function exportResueltos() {
-    const tickets = window.gTickets || [];
-    const users = window.gUsers || [];
-    const histories = window.gHistories || [];
-    
-    // Filtrar tickets resueltos
-    const resolvedTickets = tickets.filter(t => 
-        t.status === 'atendido' || t.status === 'cerrado'
-    );
-    
-    if (resolvedTickets.length === 0) {
-        toast('No hay tickets resueltos para exportar', 'error');
-        return;
-    }
-    
-    // Preparar datos con información de resolución
-    const data = resolvedTickets.map(t => {
-        const solicitante = users.find(u => u.id === t.solicitante_id);
-        const asignado = users.find(u => u.id === t.asignado_id);
-        
-        // Buscar fecha de resolución
-        const resolutionHistory = histories
-            .filter(h => h.ticket_id === t.id && h.accion === 'status_change')
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        
-        const resolutionDate = resolutionHistory ? resolutionHistory.created_at : t.updated_at;
-        const resolutionTime = resolutionDate ? 
-            Math.floor((new Date(resolutionDate) - new Date(t.created_at)) / (1000 * 60 * 60 * 24)) : 0;
-        
-        return {
-            'ID': t.id,
-            'Título': t.titulo,
-            'Categoría': t.categoria,
-            'Departamento': t.departamento,
-            'Solicitante': solicitante?.nombre || '—',
-            'Atendido por': asignado?.nombre || 'Sin asignar',
-            'Estado Final': t.status,
-            'Fecha Creación': fmtDate(t.created_at),
-            'Fecha Resolución': fmtDate(resolutionDate),
-            'Tiempo Resolución (días)': resolutionTime,
-            'Prioridad': t.prioridad
-        };
-    });
-    
-    // Ordenar por fecha de resolución (más recientes primero)
-    data.sort((a, b) => new Date(b['Fecha Resolución']) - new Date(a['Fecha Resolución']));
-    
-    // Crear Excel
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Tickets Resueltos');
-    
-    const fileName = `tickets_resueltos_tzompantepec_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    
-    toast(`Reporte de ${resolvedTickets.length} tickets resueltos descargado`, 'success');
-}
+// Exponer globalmente
+window.renderReportes  = renderReportes;
+window.exportarExcel   = exportarExcel;
+window.exportarPDF     = exportarPDF;
+window.exportExcel     = exportExcel;
+window.exportPDF       = exportPDF;
+window.exportCriticos  = exportCriticos;
+window.exportResueltos = exportResueltos;
