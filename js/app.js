@@ -53,15 +53,16 @@ function buildNav() {
     
     const adminItems = [
         { key: 'dashboard', icon: iDash(), label: 'Dashboard' },
-        { key: 'tickets', icon: iTicket(), label: 'Todos los tickets', badge: activeTickets },
-        { key: 'kanban', icon: iKanban(), label: 'Tablero Kanban' },
+        { key: 'tickets', icon: iTicket(), label: 'Gestión Global', badge: activeTickets },
+        { key: 'kanban', icon: iKanban(), label: 'Flujo Kanban' },
         { sep: 'Administración' },
-        { key: 'users', icon: iUsers(), label: 'Usuarios del sistema' },
+        { key: 'users', icon: iUsers(), label: 'Personal & Usuarios' },
+        { key: 'reportes', icon: iDash(), label: 'Analítica' },
     ];
     
     const userItems = [
-        { key: 'dashboard', icon: iDash(), label: 'Mi resumen' },
-        { key: 'my-tickets', icon: iTicket(), label: 'Mis tickets', badge: myActiveTickets },
+        { key: 'dashboard', icon: iDash(), label: 'Mi Resumen' },
+        { key: 'my-tickets', icon: iTicket(), label: 'Mis Solicitudes', badge: myActiveTickets },
     ];
     
     const items = isAdmin() ? adminItems : userItems;

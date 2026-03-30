@@ -572,7 +572,7 @@ async function submitNewTicket() {
                 categoria:      document.getElementById('nt-cat')?.value  || '',
                 departamento:   document.getElementById('nt-dep')?.value  || '',
                 solicitante_id: currentUser.id,
-                status:         'nuevo',
+                status:         'Nuevo', // Capitalized to match DB enums often created as Nuevo
                 imagen_url:     null,
                 fotos_urls:     [],
                 created_at:     new Date().toISOString(),

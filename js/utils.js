@@ -4,13 +4,20 @@
 
 // Metadata global de estados de ticket
 const STATUS_META = {
-    nuevo: { label: 'Nuevo', color: '#4f46e5', dot: '#6366f1' },
+    nuevo:         { label: 'Nuevo', color: '#10b981', dot: '#10b981' },
     en_asignacion: { label: 'En asignación', color: '#d97706', dot: '#f59e0b' },
-    en_progreso: { label: 'En progreso', color: '#059669', dot: '#10b981' },
-    pendiente: { label: 'Pendiente', color: '#e11d48', dot: '#f43f5e' },
-    atendido: { label: 'Atendido', color: '#16a34a', dot: '#22c55e' },
-    cancelado: { label: 'Cancelado', color: '#9ca3af', dot: '#d1d5db' },
-    cerrado: { label: 'Cerrado', color: '#6b7280', dot: '#9ca3af' },
+    en_progreso:   { label: 'En progreso', color: '#059669', dot: '#10b981' },
+    pendiente:      { label: 'Pendiente', color: '#e11d48', dot: '#f43f5e' },
+    atendido:       { label: 'Atendido', color: '#16a34a', dot: '#22c55e' },
+    cancelado:      { label: 'Cancelado', color: '#9ca3af', dot: '#d1d5db' },
+    cerrado:        { label: 'Cerrado', color: '#6b7280', dot: '#9ca3af' },
+};
+// Alias para mayor robustez en caso de enums en mayúsculas o con espacios
+const STATUS_ALIAS = {
+    'Nuevo': 'nuevo',
+    'Abierto': 'nuevo',
+    'PENDIENTE': 'pendiente',
+    'En proceso': 'en_progreso'
 };
 
 const PRIO_META = {
