@@ -8,7 +8,8 @@ async function renderDashboard() {
     showLoading(true);
     
     // Cargar datos necesarios
-    const tickets = await loadTickets();
+    const allTickets = await loadTickets();
+    const tickets = isAdmin() ? allTickets : allTickets.filter(t => t.solicitante_id === currentUser.id);
     const users = await loadUsers();
     const userMap = {};
     users.forEach(u => userMap[u.id] = u);

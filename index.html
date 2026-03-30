@@ -9,7 +9,8 @@
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -132,7 +133,7 @@
                 <img src="assets/images/6691194a-b92d-4c1a-b170-7fe3f192779a-removebg-preview.png" alt="Gobierno Municipal" class="login-logo-img"/>
                 <img src="assets/images/6691194a-b92d-4c1a-b170-7fe3f192779a-removebg-preview.png" alt="Sistemas Tzompantepec" class="login-logo-img"/>
             </div>
-            <div class="brand-header">
+            <div class="brand-header" ondblclick="document.getElementById('config-banner').classList.toggle('visible')" style="cursor:help" title="Doble clic para modo dev">
                 <div class="brand-municipio">H. Ayuntamiento de<br>Tzompantepec</div>
                 <p class="brand-estado">Tlaxcala · México</p>
                 <div class="brand-divider"></div>
@@ -280,6 +281,25 @@
                     <label for="nt-accion">Descripción detallada *</label>
                     <textarea id="nt-accion" placeholder="Describe el problema, pasos para reproducirlo, impacto operativo..."></textarea>
                     <div class="form-error" id="nt-accion-err">La descripción es obligatoria.</div>
+                </div>
+                <!-- Sección de fotos para adjuntar el soporte -->
+                <div class="form-group" style="margin-top:20px;">
+                    <label>Fotografías <span style="font-weight:400;color:var(--text3)">(opcional · máx. 5 imágenes, 5 MB c/u)</span></label>
+                    <div id="zona-fotos" style="border:1.5px dashed var(--border);border-radius:12px;padding:22px;
+                         text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);margin-top:8px"
+                         onclick="document.getElementById('nt-fotos').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='var(--verde)';this.style.background='var(--surface2)';this.style.transform='scale(1.01)'"
+                         ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface)';this.style.transform='scale(1)'"
+                         ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--surface)';this.style.transform='scale(1)';
+                                 onFotosSeleccionadas({files:event.dataTransfer.files})">
+                        <div style="font-size:26px;margin-bottom:8px">📸</div>
+                        <div style="font-size:.84rem;color:var(--text2);font-weight:500">
+                            Arrastra fotos aquí o <span style="color:var(--verde);text-decoration:underline">haz clic para seleccionar</span>
+                        </div>
+                        <div style="font-size:.73rem;color:var(--text3);margin-top:5px">Formatos permitidos: JPG, PNG, WebP</div>
+                    </div>
+                    <input type="file" id="nt-fotos" multiple accept="image/*" style="display:none" oninput="onFotosSeleccionadas(this)"/>
+                    <div id="fotos-preview"></div>
                 </div>
             </div>
             <div class="modal-footer">

@@ -182,6 +182,7 @@ function renderTicketTableInner(tickets, showAdmin) {
 async function openTicketDetail(id) {
     const t = (window.gTickets || []).find(x => x.id === id);
     if (!t) return;
+<<<<<<< HEAD
 
     showLoading(true);
     let history = [], comments = [];
@@ -201,6 +202,26 @@ async function openTicketDetail(id) {
     }
 
     // Reunir todas las fotos del ticket
+=======
+
+    showLoading(true);
+    let history = [], comments = [];
+
+    try {
+        const client = getSupabaseClient();
+        if (client) {
+            const [histRes, commRes] = await Promise.all([
+                client.from('ticket_historiales').select('*').eq('ticket_id', id).order('created_at'),
+                client.from('comentarios').select('*').eq('ticket_id', id).order('created_at')
+            ]);
+            history  = histRes.data  || [];
+            comments = commRes.data  || [];
+        }
+    } catch(e) {
+        console.error('Error cargando detalle:', e);
+    }
+
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
     const todasFotos = [];
     if (t.imagen_url) todasFotos.push(t.imagen_url);
     if (Array.isArray(t.fotos_urls)) todasFotos.push(...t.fotos_urls);
@@ -213,6 +234,7 @@ async function openTicketDetail(id) {
             ${todasFotos.map((url, i) => `
                 <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;
                      border:1px solid var(--border);cursor:pointer;flex-shrink:0"
+<<<<<<< HEAD
                      onclick="abrirVisorFoto('${url}','${t.titulo}')" title="Ver foto ${i+1}">
                     <img src="${url}" alt="Foto ${i+1}"
                          style="width:100%;height:100%;object-fit:cover"
@@ -247,6 +269,39 @@ async function openTicketDetail(id) {
                         onmouseenter="if(!this.disabled)this.style.opacity='1'"
                         onmouseleave="if(!this.disabled)this.style.opacity='0.7'">
                         ${activo ? '✓ ' : ''}${v.label}
+=======
+                     onclick="abrirVisorFoto('${url}','${t.titulo.replace(/'/g, "\\'")}')" title="Ver foto ${i+1}">
+                     <img src="${url}" alt="Foto ${i+1}"
+                          style="width:100%;height:100%;object-fit:cover"
+                          onerror="this.parentElement.innerHTML='<div style=&quot;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:.7rem;color:var(--text3)&quot;>Error</div>'"/>
+                </div>`).join('')}
+        </div>` : '';
+
+    const trans     = STATUS_TRANSITIONS[t.status] || [];
+    const isOwner   = t.solicitante_id === currentUser?.id;
+    let nextPossible = [];
+
+    if (isAdmin()) {
+        nextPossible = trans;
+    } else if (isOwner && ['nuevo', 'pendiente'].includes(t.status)) {
+        nextPossible = ['cancelado'];
+    }
+
+    const statusButtons = nextPossible.length > 0 ? `
+        <div style="margin-bottom:24px; padding:15px; background:var(--surface2); border-radius:12px; border:1px solid var(--border)">
+            <div style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                Gestión de Flujo / Acciones Disponibles
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                ${nextPossible.map(k => {
+                    const v = STATUS_META[k] || { color: '#6b7280', label: k };
+                    return `<button class="btn btn-sm" onclick="changeTicketStatus('${t.id}','${k}')"
+                        style="background:transparent; border:1.8px solid ${v.color}; color:${v.color}; border-radius:10px; font-weight:700; font-size:.72rem; padding:8px 16px; transition:all 0.25s; cursor:pointer;"
+                        onmouseenter="this.style.background='${v.color}'; this.style.color='#fff';"
+                        onmouseleave="this.style.background='transparent'; this.style.color='${v.color}';">
+                        ${k === 'cancelado' ? '✕ Cancelar ticket' : '✅ Mover a ' + v.label}
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
                     </button>`;
                 }).join('')}
             </div>
@@ -304,8 +359,13 @@ async function openTicketDetail(id) {
                 </div>
             </div>` : ''}`;
 
+<<<<<<< HEAD
     // Armar el body del modal
     document.getElementById('td-id').textContent    = t.id;
+=======
+    // UI Updates
+    document.getElementById('td-id').textContent = t.id;
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
     document.getElementById('td-title').textContent = t.titulo;
     document.getElementById('td-body').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:.84rem">
@@ -328,6 +388,7 @@ async function openTicketDetail(id) {
                 <strong style="margin-left:6px;font-family:var(--font-mono);font-size:.76rem">${fmtDate(t.created_at)}</strong>
             </div>
         </div>
+<<<<<<< HEAD
 
         <div style="margin-bottom:16px">
             <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
@@ -336,6 +397,12 @@ async function openTicketDetail(id) {
             <p style="font-size:.86rem;line-height:1.65;color:var(--text)">${t.descripcion || '—'}</p>
         </div>
 
+=======
+        <div style="margin-bottom:16px">
+            <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Descripción</div>
+            <p style="font-size:.86rem;line-height:1.65;color:var(--text)">${t.descripcion || '—'}</p>
+        </div>
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
         ${galeriaHtml}
         ${statusButtons}
         ${historyHtml}
@@ -580,7 +647,11 @@ async function submitNewTicket() {
                 categoria:      document.getElementById('nt-cat')?.value  || '',
                 departamento:   document.getElementById('nt-dep')?.value  || '',
                 solicitante_id: currentUser.id,
+<<<<<<< HEAD
                 status:         'nuevo',
+=======
+                status:         'Nuevo', // Capitalized to match DB enums often created as Nuevo
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
                 imagen_url:     null,
                 fotos_urls:     [],
                 created_at:     new Date().toISOString(),
@@ -832,6 +903,7 @@ function renderMyTicketsInner(tickets) {
 }
 
 // ─────────────────────────────────────────
+<<<<<<< HEAD
 // AGREGAR CAMPO DE FOTOS AL MODAL HTML
 // Se llama una vez al cargar la app para
 // inyectar el input de fotos en el modal
@@ -873,6 +945,8 @@ if (document.readyState === 'loading') {
 }
 
 // ─────────────────────────────────────────
+=======
+>>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
 // TAMBIÉN agregar columna fotos_urls a la
 // tabla tickets si no existe (SQL a ejecutar
 // manualmente en Supabase):
