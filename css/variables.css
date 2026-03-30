@@ -1,5 +1,4 @@
 :root {
-<<<<<<< HEAD
     /* Paleta institucional — verde Tlaxcala + tierra + blanco cálido */
     /* Colors - Enhanced for better visibility */
     --verde: #16a34a;
@@ -25,7 +24,6 @@
     --naranja-bg: rgba(249, 115, 22, 0.1);
     --naranja-border: rgba(249, 115, 22, 0.3);
 
-=======
     /* Paleta Futurista Institucional — Tzompantepec v2.0 */
     --p-50: #f0fdf4;
     --p-100: #dcfce7;
@@ -57,7 +55,6 @@
     /* Surfaces: Glassmorphism Ultra-Clean */
     --bg: #f8fafc;
     --bg-alt: #f1f5f9;
->>>>>>> 6877419d3c8d6b81ab8aa213fba1b0362f5316f1
     --surface: #ffffff;
     --surface-2: #f8f9fa;
     --surface-glass: rgba(255, 255, 255, 0.82);
@@ -87,8 +84,8 @@
     --radius-xl: 32px;
     --radius-full: 9999px;
 
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.02);
-    --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
     --shadow-lg: 0 20px 50px -12px rgba(2, 44, 34, 0.12);
     --shadow-neon: 0 0 20px rgba(16, 185, 129, 0.1);
 
