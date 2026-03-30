@@ -1,0 +1,94 @@
+:root {
+    /* Paleta institucional — verde Tlaxcala + tierra + blanco cálido */
+    /* Colors - Enhanced for better visibility */
+    --verde: #16a34a;
+    --verde-light: #22c55e;
+    --verde-med: #15803d;
+    --verde-dark: #166534;
+    --verde-bg: rgba(34, 197, 94, 0.1);
+    --verde-border: rgba(34, 197, 94, 0.3);
+    --verde-shadow: rgba(34, 197, 94, 0.2);
+
+    --rojo: #dc2626;
+    --rojo-light: #ef4444;
+    --rojo-bg: rgba(220, 38, 38, 0.1);
+    --rojo-border: rgba(220, 38, 38, 0.3);
+
+    --azul: #2563eb;
+    --azul-light: #3b82f6;
+    --azul-bg: rgba(37, 99, 235, 0.1);
+    --azul-border: rgba(37, 99, 235, 0.3);
+
+    --naranja: #f97316;
+    --naranja-light: #fb923c;
+    --naranja-bg: rgba(249, 115, 22, 0.1);
+    --naranja-border: rgba(249, 115, 22, 0.3);
+
+    /* Paleta Futurista Institucional — Tzompantepec v2.0 */
+    --p-50: #f0fdf4;
+    --p-100: #dcfce7;
+    --p-200: #bbf7d0;
+    --p-300: #86efac;
+    --p-400: #4ade80;
+    --p-500: #22c55e;
+    --p-600: #16a34a;
+    --p-700: #15803d;
+    --p-800: #166534;
+    --p-900: #14532d;
+    --p-950: #052e16;
+
+    /* Theme Primary: Esmeralda Cibernético */
+    --verde-deep: #022c22;
+    --verde: #059669;
+    --verde-med: #10b981;
+    --verde-light: #34d399;
+    --verde-glow: rgba(16, 185, 129, 0.15);
+    --verde-neon: #00ff9d;
+    --verde-pale: #f0fdfa;
+
+    /* Accent: Oro Real & Cyan Futurista */
+    --oro: #d4af37;
+    --oro-med: #b8860b;
+    --cyan: #06b6d4;
+    --cyan-glow: rgba(6, 182, 212, 0.2);
+
+    /* Surfaces: Glassmorphism Ultra-Clean */
+    --bg: #f8fafc;
+    --bg-alt: #f1f5f9;
+    --surface: #ffffff;
+    --surface-2: #f8f9fa;
+    --surface-glass: rgba(255, 255, 255, 0.82);
+    --surface-dark: #0f172a;
+    --surface-blur: blur(16px);
+
+    /* Borders & Precision */
+    --border: rgba(15, 23, 42, 0.08);
+    --border-med: rgba(15, 23, 42, 0.12);
+    --border-neon: rgba(16, 185, 129, 0.3);
+
+    /* Typography: Modern Precision */
+    --font-display: 'Lora', serif;
+    --font-body: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Semantic */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+
+    /* Effects: Premium Elevation */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --radius-xl: 32px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+    --shadow-lg: 0 20px 50px -12px rgba(2, 44, 34, 0.12);
+    --shadow-neon: 0 0 20px rgba(16, 185, 129, 0.1);
+
+    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-fast: all 0.15s ease;
+}

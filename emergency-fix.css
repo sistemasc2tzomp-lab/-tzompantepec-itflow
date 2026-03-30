@@ -1,0 +1,66 @@
+/* ═════════════════════════════════════════════════
+   EMERGENCY FIX - CSS CRÍTICO PARA VISUALIZACIÓN INMEDIATA
+   ══════════════════════════════════════════════════ */
+
+/* Forzar visibilidad de elementos críticos */
+#page-app, #page-app.visible {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Forzar colores y texto */
+.main, .topbar, .sidebar, .page-content {
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* Forzar botones */
+.btn, .btn-primary, .btn-success, .btn-danger {
+    visibility: visible !important;
+    display: inline-flex !important;
+    background: #16a34a !important;
+    color: white !important;
+}
+
+/* Forzar tarjetas y contenido */
+.users-grid, .usr-card, .dashboard-stats {
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* Forzar texto */
+h1, h2, h3, p, span, div {
+    visibility: visible !important;
+    color: #1c1a17 !important;
+}
+
+/* Forzar sidebar */
+.sidebar {
+    visibility: visible !important;
+    display: flex !important;
+}
+
+/* Forzar main content */
+.main {
+    margin-left: 280px !important;
+    visibility: visible !important;
+}
+
+/* Forzar topbar */
+.topbar {
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* Debug borders */
+.page-content {
+    border: 2px solid red !important;
+    background: rgba(255, 255, 0, 0.9) !important;
+}
+
+/* Forzar z-index */
+.page-content, .users-grid, .dashboard-stats {
+    z-index: 100 !important;
+    position: relative !important;
+}
